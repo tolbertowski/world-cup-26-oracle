@@ -5,8 +5,14 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from world_cup_oracle.data import build_demo_fixtures, build_demo_teams
-from world_cup_oracle.data.io import cache_url, write_manual_templates
+from world_cup_oracle.data import build_demo_fixtures, build_demo_teams, load_processed_or_demo
+from world_cup_oracle.data.io import (
+    apply_team_adjustments,
+    cache_url,
+    read_match_updates,
+    read_team_adjustments,
+    write_manual_templates,
+)
 from world_cup_oracle.data.pipeline import (
     import_tournament_snapshot,
     read_fixtures_csv,
@@ -20,7 +26,7 @@ from world_cup_oracle.data.fifa_official import (
     sync_fifa_calendar,
 )
 from world_cup_oracle.models import MatchPredictor
-from world_cup_oracle.simulation import run_monte_carlo
+from world_cup_oracle.simulation import project_bracket, run_monte_carlo
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -61,6 +67,11 @@ def build_parser() -> argparse.ArgumentParser:
     sync_fifa.add_argument("--apply", action="store_true", help="Write raw/processed files and official completed results.")
     sync_fifa.add_argument("--no-results", action="store_true", help="Do not merge completed FIFA results into manual updates.")
     sync_fifa.add_argument("--no-strict", action="store_true", help="Allow partial snapshots.")
+
+    subparsers.add_parser(
+        "project-bracket",
+        help="Print the deterministic most-likely knockout bracket from processed data.",
+    )
 
     subparsers.add_parser("release-check", help="Fail if the app would still use demo data.")
     return parser
@@ -139,6 +150,24 @@ def main(argv: list[str] | None = None) -> int:
         if result.updates_path:
             print(f"updates={result.updates_path}")
         return 0 if result.ok else 1
+    if args.command == "project-bracket":
+        tournament = load_processed_or_demo(PROJECT_ROOT / "data" / "processed")
+        adjustments = read_team_adjustments(PROJECT_ROOT / "data" / "manual" / "team_adjustments.csv")
+        predictor = MatchPredictor.from_teams(tournament.teams)
+        predictor = MatchPredictor(apply_team_adjustments(predictor.ratings, adjustments))
+        locked = read_match_updates(PROJECT_ROOT / "data" / "manual" / "match_updates.csv")
+        bracket = project_bracket(tournament.teams, tournament.fixtures, predictor, locked)
+        names = {team.code: team.name for team in tournament.teams}
+        for stage, matches in bracket.rounds:
+            print(stage.value)
+            for match in matches:
+                winner = names.get(match.projected_winner, match.projected_winner)
+                tag = "locked" if match.source == "locked" else f"{match.advance_prob:.0%}"
+                home = names.get(match.home_team, match.home_team)
+                away = names.get(match.away_team, match.away_team)
+                print(f"  {home} vs {away} -> {winner} ({tag})")
+        print(f"champion={names.get(bracket.champion, bracket.champion)}")
+        return 0
     if args.command == "release-check":
         report = release_check(PROJECT_ROOT / "data" / "processed")
         print(report.render())

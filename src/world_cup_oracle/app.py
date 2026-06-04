@@ -13,9 +13,9 @@ from world_cup_oracle.data.io import (
     read_match_updates,
     read_team_adjustments,
 )
-from world_cup_oracle.domain import Fixture, MatchPrediction, Team
+from world_cup_oracle.domain import Fixture, MatchPrediction, MatchStage, Team
 from world_cup_oracle.models import MatchPredictor
-from world_cup_oracle.simulation import run_monte_carlo
+from world_cup_oracle.simulation import project_bracket, run_monte_carlo
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -43,7 +43,7 @@ def main() -> None:
         st.header("World Cup 26 Oracle")
         page = st.radio(
             "View",
-            ["Dashboard", "Fixtures", "Match Predictor", "Tournament Simulator", "Model Check", "Data Update"],
+            ["Dashboard", "Fixtures", "Bracket", "Match Predictor", "Tournament Simulator", "Model Check", "Data Update"],
             label_visibility="collapsed",
         )
         simulations = st.slider("Simulations", min_value=100, max_value=3000, value=750, step=100)
@@ -54,6 +54,8 @@ def main() -> None:
         _dashboard(st, teams, fixtures, predictor, simulations, seed, team_names, locked_results)
     elif page == "Fixtures":
         _fixtures_view(st, fixtures, team_names)
+    elif page == "Bracket":
+        _bracket_view(st, teams, fixtures, predictor, team_names, locked_results)
     elif page == "Match Predictor":
         _match_predictor(st, fixtures, predictor, team_names)
     elif page == "Tournament Simulator":
@@ -135,6 +137,99 @@ def _fixtures_view(st, fixtures: list[Fixture], team_names: dict[str, str]) -> N
     col3.metric("Venues", rows["Venue"].nunique())
     col4.metric("Source", "FIFA")
     st.dataframe(filtered, use_container_width=True, hide_index=True)
+
+
+_BRACKET_ROUND_LABELS = {
+    MatchStage.ROUND_OF_32: "Round of 32",
+    MatchStage.ROUND_OF_16: "Round of 16",
+    MatchStage.QUARTER_FINAL: "Quarter-finals",
+    MatchStage.SEMI_FINAL: "Semi-finals",
+    MatchStage.FINAL: "Final",
+    MatchStage.THIRD_PLACE: "Third place",
+}
+
+
+def _bracket_view(
+    st,
+    teams: list[Team],
+    fixtures: list[Fixture],
+    predictor: MatchPredictor,
+    team_names: dict[str, str],
+    locked_results: dict,
+) -> None:
+    st.title("Projected Bracket")
+    st.caption(
+        "The model's single most-likely path: deterministic group standings and "
+        "knockout winners, all the way to the champion. Not betting advice."
+    )
+
+    bracket = project_bracket(teams, fixtures, predictor, locked_results)
+    st.success(f"Projected champion: {team_names.get(bracket.champion, bracket.champion)}")
+    if bracket.third_place:
+        st.caption(f"Projected third place: {team_names.get(bracket.third_place, bracket.third_place)}")
+
+    knockout_rounds = [
+        (stage, matches)
+        for stage, matches in bracket.rounds
+        if stage != MatchStage.THIRD_PLACE
+    ]
+    columns = st.columns(len(knockout_rounds) + 1)
+    for column, (stage, matches) in zip(columns, knockout_rounds):
+        cards = "".join(_bracket_card_html(match, team_names) for match in matches)
+        title = _BRACKET_ROUND_LABELS.get(stage, stage.value)
+        column.markdown(
+            f'<div class="wc-round-title">{title}</div><div class="wc-col">{cards}</div>',
+            unsafe_allow_html=True,
+        )
+
+    champion = team_names.get(bracket.champion, bracket.champion)
+    champion_card = (
+        f'<div class="wc-champion"><div class="wc-trophy">&#127942;</div>{_html_escape(champion)}</div>'
+    )
+    columns[-1].markdown(
+        f'<div class="wc-round-title">Champion</div><div class="wc-col">{champion_card}</div>',
+        unsafe_allow_html=True,
+    )
+
+    st.subheader("Bracket Detail")
+    st.dataframe(_bracket_rows(bracket, team_names), use_container_width=True, hide_index=True)
+
+
+def _html_escape(text: str) -> str:
+    return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+
+def _bracket_card_html(match, team_names: dict[str, str]) -> str:
+    home = _html_escape(team_names.get(match.home_team, match.home_team))
+    away = _html_escape(team_names.get(match.away_team, match.away_team))
+    home_win = match.projected_winner == match.home_team
+    tag = "locked" if match.source == "locked" else f"{match.advance_prob:.0%}"
+    home_tag = f'<span class="wc-tag">{tag}</span>' if home_win else ""
+    away_tag = f'<span class="wc-tag">{tag}</span>' if not home_win else ""
+    home_cls = "wc-team wc-win" if home_win else "wc-team"
+    away_cls = "wc-team wc-win" if not home_win else "wc-team"
+    return (
+        '<div class="wc-match">'
+        f'<div class="{home_cls}"><span class="wc-name">{home}</span>{home_tag}</div>'
+        f'<div class="{away_cls}"><span class="wc-name">{away}</span>{away_tag}</div>'
+        "</div>"
+    )
+
+
+def _bracket_rows(bracket, team_names: dict[str, str]) -> pd.DataFrame:
+    rows = []
+    for stage, matches in bracket.rounds:
+        for match in matches:
+            rows.append(
+                {
+                    "Round": _BRACKET_ROUND_LABELS.get(stage, stage.value),
+                    "Home": team_names.get(match.home_team, match.home_team),
+                    "Away": team_names.get(match.away_team, match.away_team),
+                    "Projected Winner": team_names.get(match.projected_winner, match.projected_winner),
+                    "Advance %": "locked" if match.source == "locked" else f"{match.advance_prob:.0%}",
+                }
+            )
+    return pd.DataFrame(rows)
 
 
 def _match_predictor(st, fixtures: list[Fixture], predictor: MatchPredictor, team_names: dict[str, str]) -> None:
@@ -363,6 +458,73 @@ def _inject_css(st) -> None:
         div[data-testid="stSidebarContent"] p,
         div[data-testid="stSidebarContent"] span {
             color: #f8faf7;
+        }
+        .wc-round-title {
+            font-weight: 700;
+            color: #1f3d38;
+            text-align: center;
+            font-size: 0.9rem;
+            margin-bottom: 10px;
+            letter-spacing: 0.02em;
+        }
+        .wc-col {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-around;
+            min-height: 1120px;
+        }
+        .wc-match {
+            border: 1px solid #d8dfdb;
+            border-radius: 10px;
+            overflow: hidden;
+            background: #ffffff;
+            box-shadow: 0 1px 2px rgba(31, 61, 56, 0.06);
+        }
+        .wc-team {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 7px 10px;
+            font-size: 0.84rem;
+            color: #41514c;
+            gap: 6px;
+        }
+        .wc-team + .wc-team {
+            border-top: 1px solid #eef2ef;
+        }
+        .wc-win {
+            background: #eef2ef;
+            font-weight: 700;
+            color: #1f3d38;
+            box-shadow: inset 3px 0 0 #1f3d38;
+        }
+        .wc-name {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .wc-tag {
+            font-size: 0.7rem;
+            color: #5b6b66;
+            font-weight: 600;
+            flex-shrink: 0;
+        }
+        .wc-win .wc-tag {
+            color: #1f3d38;
+        }
+        .wc-champion {
+            border: 1px solid #1f3d38;
+            border-radius: 10px;
+            background: #1f3d38;
+            color: #f8faf7;
+            text-align: center;
+            font-weight: 700;
+            font-size: 0.9rem;
+            padding: 12px 10px;
+        }
+        .wc-trophy {
+            font-size: 1.5rem;
+            line-height: 1.2;
         }
         </style>
         """,

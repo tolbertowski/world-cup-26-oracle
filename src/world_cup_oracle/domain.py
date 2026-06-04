@@ -180,3 +180,21 @@ class SimulationSummary:
     group_winner_probs: dict[str, dict[str, float]]
     knockout_probs: dict[str, float]
     upset_probs: dict[str, float]
+
+
+@dataclass(frozen=True, slots=True)
+class BracketMatch:
+    stage: MatchStage
+    match_id: str
+    home_team: str
+    away_team: str
+    projected_winner: str
+    advance_prob: float
+    source: str  # "locked" when taken from a locked result, else "expected"
+
+
+@dataclass(frozen=True, slots=True)
+class BracketProjection:
+    rounds: list[tuple[MatchStage, list[BracketMatch]]]
+    champion: str
+    third_place: str | None = None

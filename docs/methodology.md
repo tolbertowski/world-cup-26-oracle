@@ -36,6 +36,17 @@ probabilities.
 Knockout draws are resolved into eventual win probabilities using rating edge,
 with method probabilities split between regulation, extra time, and penalties.
 
+## Projected Bracket
+
+The Bracket view is a single deterministic projection, distinct from the Monte
+Carlo odds. It fills group results with each match's modal scoreline (or a
+locked real result), takes the resulting qualifiers, and advances the side with
+the higher eventual-win probability in every knockout tie through to the
+champion. It reuses the same engine and match-model functions as the simulator,
+so it represents the model's single most-likely path rather than an aggregate
+over thousands of runs. Locked results in `data/manual/match_updates.csv` are
+always honored over projections.
+
 ## Cards and Corners
 
 Cards and corners are v1 projections, not claims of deep player-level modeling.

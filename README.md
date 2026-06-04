@@ -12,6 +12,7 @@ simulation. It is not betting advice.
 - 48-team tournament engine with 12 groups, best third-place qualification, and knockout progression.
 - Match predictor with win/draw/loss odds, expected goals, scoreline probabilities, cards, and corners.
 - Monte Carlo simulator for champion, finalist, group winner, knockout, and upset probabilities.
+- Projected knockout bracket: the deterministic most-likely path from the Round of 32 to the champion.
 - Manual-assisted CSV workflow for locking real results as the tournament progresses.
 - Streamlit dashboard built for friends and fans rather than technical users.
 
@@ -34,6 +35,7 @@ world-cup-oracle release-check
 world-cup-oracle validate-snapshot --teams data/raw/teams.csv --fixtures data/raw/fixtures.csv
 world-cup-oracle import-snapshot --teams data/raw/teams.csv --fixtures data/raw/fixtures.csv
 world-cup-oracle simulate-demo --simulations 1000 --seed 26
+world-cup-oracle project-bracket
 world-cup-oracle cache-url "https://example.com/free-data.csv" --name source.csv
 ```
 

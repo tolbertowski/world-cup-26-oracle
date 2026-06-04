@@ -7,7 +7,10 @@ from dataclasses import dataclass, field
 from random import Random
 
 from world_cup_oracle.domain import (
+    BracketMatch,
+    BracketProjection,
     Fixture,
+    MatchPrediction,
     MatchResult,
     MatchStage,
     MethodOfWin,
@@ -166,8 +169,7 @@ class TournamentSimulator:
             home_penalties = away_penalties = None
             method = MethodOfWin.REGULATION
         else:
-            home_eventual_share = prediction.home_win / max(0.01, prediction.home_win + prediction.away_win)
-            home_advances = self.random.random() < home_eventual_share
+            home_advances = self.random.random() < knockout_penalty_share(prediction)
             home_penalties, away_penalties = (5, 4) if home_advances else (4, 5)
             method = MethodOfWin.PENALTIES
 
@@ -189,6 +191,129 @@ class TournamentSimulator:
         winner_rating = self.predictor.ratings[winner].rating
         loser_rating = self.predictor.ratings[loser].rating
         return loser_rating - winner_rating >= 100.0
+
+
+def knockout_penalty_share(prediction: MatchPrediction) -> float:
+    """Probability the home side wins a knockout tie that reaches penalties."""
+    return prediction.home_win / max(0.01, prediction.home_win + prediction.away_win)
+
+
+def knockout_advance_share(prediction: MatchPrediction) -> float:
+    """Overall probability the home side advances from a knockout tie.
+
+    Mirrors the Monte Carlo path: the home side advances by winning in
+    regulation (``home_win``) or by surviving a drawn tie on penalties
+    (``draw`` weighted by :func:`knockout_penalty_share`).
+    """
+    return prediction.home_win + prediction.draw * knockout_penalty_share(prediction)
+
+
+def project_bracket(
+    teams: list[Team],
+    fixtures: list[Fixture],
+    predictor: MatchPredictor,
+    locked_results: dict[str, MatchResult] | None = None,
+) -> BracketProjection:
+    """Deterministic most-likely knockout bracket (no RNG).
+
+    Group results use the modal scoreline from each prediction (or a locked
+    real result when present); knockout winners take the side with the higher
+    :func:`knockout_advance_share`. Reuses the same engine functions as the
+    Monte Carlo path so the structure stays consistent.
+    """
+    locked_results = locked_results or {}
+    group_fixtures = [fixture for fixture in fixtures if fixture.stage == MatchStage.GROUP]
+
+    results: dict[str, MatchResult] = {}
+    for fixture in group_fixtures:
+        if fixture.match_id in locked_results:
+            results[fixture.match_id] = locked_results[fixture.match_id]
+            continue
+        prediction = predictor.predict(fixture)
+        home_goals, away_goals = _modal_scoreline(prediction)
+        results[fixture.match_id] = MatchResult(
+            match_id=fixture.match_id,
+            home_goals=home_goals,
+            away_goals=away_goals,
+            method=MethodOfWin.REGULATION if home_goals != away_goals else MethodOfWin.DRAW,
+            locked=True,
+        )
+
+    group_stage = calculate_group_stage(teams, group_fixtures, results)
+    rounds: list[tuple[MatchStage, list[BracketMatch]]] = []
+
+    def project_round(round_fixtures: list[Fixture]) -> tuple[list[BracketMatch], list[str], list[str]]:
+        matches: list[BracketMatch] = []
+        winners: list[str] = []
+        losers: list[str] = []
+        for fixture in round_fixtures:
+            locked = locked_results.get(fixture.match_id)
+            if locked is not None and locked.winner_side is not None:
+                home_advances = locked.winner_side == "home"
+                advance_prob = 1.0
+                source = "locked"
+            else:
+                share = knockout_advance_share(predictor.predict(fixture))
+                home_advances = share >= 0.5
+                advance_prob = share if home_advances else 1.0 - share
+                source = "expected"
+            winner = fixture.home_team if home_advances else fixture.away_team
+            loser = fixture.away_team if home_advances else fixture.home_team
+            matches.append(
+                BracketMatch(
+                    stage=fixture.stage,
+                    match_id=fixture.match_id,
+                    home_team=fixture.home_team,
+                    away_team=fixture.away_team,
+                    projected_winner=winner,
+                    advance_prob=advance_prob,
+                    source=source,
+                )
+            )
+            winners.append(winner)
+            losers.append(loser)
+        return matches, winners, losers
+
+    round_of_32 = build_round_of_32(group_stage.qualified)
+    r32_matches, r32_winners, _ = project_round(round_of_32)
+    rounds.append((MatchStage.ROUND_OF_32, r32_matches))
+
+    r16_matches, r16_winners, _ = project_round(
+        build_next_round_fixtures(r32_winners, MatchStage.ROUND_OF_16, "R16")
+    )
+    rounds.append((MatchStage.ROUND_OF_16, r16_matches))
+
+    qf_matches, qf_winners, _ = project_round(
+        build_next_round_fixtures(r16_winners, MatchStage.QUARTER_FINAL, "QF")
+    )
+    rounds.append((MatchStage.QUARTER_FINAL, qf_matches))
+
+    sf_matches, sf_winners, sf_losers = project_round(
+        build_next_round_fixtures(qf_winners, MatchStage.SEMI_FINAL, "SF")
+    )
+    rounds.append((MatchStage.SEMI_FINAL, sf_matches))
+
+    final_matches, final_winners, _ = project_round(
+        build_next_round_fixtures(sf_winners, MatchStage.FINAL, "F")
+    )
+    rounds.append((MatchStage.FINAL, final_matches))
+
+    third_place = None
+    if len(sf_losers) == 2:
+        tp_matches, tp_winners, _ = project_round(
+            [Fixture("TP-01", MatchStage.THIRD_PLACE, home_team=sf_losers[0], away_team=sf_losers[1])]
+        )
+        rounds.append((MatchStage.THIRD_PLACE, tp_matches))
+        third_place = tp_winners[0]
+
+    return BracketProjection(rounds=rounds, champion=final_winners[0], third_place=third_place)
+
+
+def _modal_scoreline(prediction: MatchPrediction) -> tuple[int, int]:
+    """Most-likely scoreline, with a deterministic tie-break."""
+    if not prediction.scoreline_probs:
+        return (0, 0)
+    return max(prediction.scoreline_probs.items(), key=lambda item: (item[1], item[0]))[0]
 
 
 def run_monte_carlo(
