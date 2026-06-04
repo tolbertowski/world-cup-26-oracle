@@ -43,7 +43,7 @@ def main() -> None:
         st.header("World Cup 26 Oracle")
         page = st.radio(
             "View",
-            ["Dashboard", "Match Predictor", "Tournament Simulator", "Model Check", "Data Update"],
+            ["Dashboard", "Fixtures", "Match Predictor", "Tournament Simulator", "Model Check", "Data Update"],
             label_visibility="collapsed",
         )
         simulations = st.slider("Simulations", min_value=100, max_value=3000, value=750, step=100)
@@ -52,6 +52,8 @@ def main() -> None:
 
     if page == "Dashboard":
         _dashboard(st, teams, fixtures, predictor, simulations, seed, team_names, locked_results)
+    elif page == "Fixtures":
+        _fixtures_view(st, fixtures, team_names)
     elif page == "Match Predictor":
         _match_predictor(st, fixtures, predictor, team_names)
     elif page == "Tournament Simulator":
@@ -110,6 +112,29 @@ def _dashboard(
         )
         st.subheader("Upset Watch")
         st.dataframe(upset_rows, use_container_width=True, hide_index=True)
+
+
+def _fixtures_view(st, fixtures: list[Fixture], team_names: dict[str, str]) -> None:
+    st.title("Fixtures")
+    rows = _fixture_rows(fixtures, team_names)
+    groups = ["All", *sorted(group for group in rows["Group"].dropna().unique() if group)]
+    selected_group = st.selectbox("Group", groups)
+    search = st.text_input("Team or venue", placeholder="Search team, code, venue, or match ID")
+
+    filtered = rows
+    if selected_group != "All":
+        filtered = filtered[filtered["Group"] == selected_group]
+    if search:
+        query = search.casefold()
+        mask = filtered.apply(lambda row: query in " ".join(str(value) for value in row).casefold(), axis=1)
+        filtered = filtered[mask]
+
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric("Fixtures", len(filtered))
+    col2.metric("Groups", rows["Group"].nunique())
+    col3.metric("Venues", rows["Venue"].nunique())
+    col4.metric("Source", "FIFA")
+    st.dataframe(filtered, use_container_width=True, hide_index=True)
 
 
 def _match_predictor(st, fixtures: list[Fixture], predictor: MatchPredictor, team_names: dict[str, str]) -> None:
@@ -282,6 +307,33 @@ def _probability_rows(probs: dict[str, float], team_names: dict[str, str]) -> pd
             for key, probability in probs.items()
         ]
     ).sort_values("Probability", ascending=False)
+
+
+def _fixture_rows(
+    fixtures: list[Fixture],
+    team_names: dict[str, str],
+    *,
+    timezone: str = "Australia/Melbourne",
+) -> pd.DataFrame:
+    rows = []
+    for fixture in fixtures:
+        kickoff = pd.to_datetime(fixture.kickoff, utc=True, errors="coerce") if fixture.kickoff else pd.NaT
+        local_kickoff = "" if pd.isna(kickoff) else kickoff.tz_convert(timezone).strftime("%d %b %Y, %H:%M")
+        rows.append(
+            {
+                "_sort_kickoff": "" if pd.isna(kickoff) else kickoff.isoformat(),
+                "Match ID": fixture.match_id,
+                "Group": fixture.group or "",
+                "Home": team_names.get(fixture.home_team, fixture.home_team),
+                "Away": team_names.get(fixture.away_team, fixture.away_team),
+                "Home Code": fixture.home_team,
+                "Away Code": fixture.away_team,
+                "Kickoff": local_kickoff,
+                "Venue": fixture.venue or "",
+                "Stage": fixture.stage.value.replace("_", " ").title(),
+            }
+        )
+    return pd.DataFrame(rows).sort_values(["_sort_kickoff", "Match ID"]).drop(columns=["_sort_kickoff"])
 
 
 def _scoreline_rows(prediction: MatchPrediction) -> pd.DataFrame:
