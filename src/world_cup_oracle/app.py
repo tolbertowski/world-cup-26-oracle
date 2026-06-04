@@ -270,6 +270,8 @@ def _prediction_metrics(st, prediction: MatchPrediction, team_names: dict[str, s
 
 
 def _probability_rows(probs: dict[str, float], team_names: dict[str, str]) -> pd.DataFrame:
+    if not probs:
+        return pd.DataFrame(columns=["Label", "Code", "Probability"])
     return pd.DataFrame(
         [
             {

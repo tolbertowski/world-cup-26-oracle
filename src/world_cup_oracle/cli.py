@@ -11,8 +11,13 @@ from world_cup_oracle.data.pipeline import (
     import_tournament_snapshot,
     read_fixtures_csv,
     read_teams_csv,
+    release_check,
     validate_tournament_data,
     write_source_templates,
+)
+from world_cup_oracle.data.fifa_official import (
+    FIFA_WORLD_CUP_2026_SEASON_ID,
+    sync_fifa_calendar,
 )
 from world_cup_oracle.models import MatchPredictor
 from world_cup_oracle.simulation import run_monte_carlo
@@ -48,6 +53,16 @@ def build_parser() -> argparse.ArgumentParser:
     import_snapshot.add_argument("--teams", type=Path, required=True)
     import_snapshot.add_argument("--fixtures", type=Path, required=True)
     import_snapshot.add_argument("--strict", action="store_true", help="Require a full 48-team, 72-group-fixture snapshot.")
+
+    sync_fifa = subparsers.add_parser("sync-fifa", help="Sync official FIFA World Cup 2026 calendar data.")
+    sync_fifa.add_argument("--season-id", default=FIFA_WORLD_CUP_2026_SEASON_ID)
+    sync_fifa.add_argument("--language", default="en")
+    sync_fifa.add_argument("--source-json", type=Path, help="Use a cached FIFA calendar JSON file instead of fetching.")
+    sync_fifa.add_argument("--apply", action="store_true", help="Write raw/processed files and official completed results.")
+    sync_fifa.add_argument("--no-results", action="store_true", help="Do not merge completed FIFA results into manual updates.")
+    sync_fifa.add_argument("--no-strict", action="store_true", help="Allow partial snapshots.")
+
+    subparsers.add_parser("release-check", help="Fail if the app would still use demo data.")
     return parser
 
 
@@ -98,6 +113,34 @@ def main(argv: list[str] | None = None) -> int:
             PROJECT_ROOT / "data" / "processed",
             strict=args.strict,
         )
+        print(report.render())
+        return 0 if report.ok else 1
+    if args.command == "sync-fifa":
+        result = sync_fifa_calendar(
+            raw_dir=PROJECT_ROOT / "data" / "raw",
+            cache_dir=PROJECT_ROOT / "data" / "cache" / "fifa",
+            processed_dir=PROJECT_ROOT / "data" / "processed",
+            manual_dir=PROJECT_ROOT / "data" / "manual",
+            source_json=args.source_json,
+            apply=args.apply,
+            update_results=not args.no_results,
+            strict=not args.no_strict,
+            season_id=args.season_id,
+            language=args.language,
+        )
+        print(result.report.render())
+        print(f"teams={len(result.teams)} fixtures={len(result.fixtures)} completed_results={len(result.completed_results)}")
+        if result.cache_path:
+            print(f"cache={result.cache_path}")
+        if result.raw_paths:
+            print(f"raw={result.raw_paths[0]},{result.raw_paths[1]}")
+        if result.processed_paths:
+            print(f"processed={result.processed_paths[0]},{result.processed_paths[1]}")
+        if result.updates_path:
+            print(f"updates={result.updates_path}")
+        return 0 if result.ok else 1
+    if args.command == "release-check":
+        report = release_check(PROJECT_ROOT / "data" / "processed")
         print(report.render())
         return 0 if report.ok else 1
     parser.print_help()

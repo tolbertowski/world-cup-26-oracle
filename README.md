@@ -29,6 +29,8 @@ Useful commands:
 ```bash
 world-cup-oracle --version
 world-cup-oracle init-data
+world-cup-oracle sync-fifa --apply
+world-cup-oracle release-check
 world-cup-oracle validate-snapshot --teams data/raw/teams.csv --fixtures data/raw/fixtures.csv
 world-cup-oracle import-snapshot --teams data/raw/teams.csv --fixtures data/raw/fixtures.csv
 world-cup-oracle simulate-demo --simulations 1000 --seed 26
@@ -38,8 +40,9 @@ world-cup-oracle cache-url "https://example.com/free-data.csv" --name source.csv
 ## Data Workflow
 
 The app ships with an illustrative offline demo tournament so it can run from a
-fresh clone without paid APIs. Before production use, replace the demo schedule
-with official fixture snapshots and open/free historical data.
+fresh clone without paid APIs. For portfolio use, sync the official FIFA
+calendar first and run `world-cup-oracle release-check`; do not deploy or push a
+portfolio release while that check fails.
 
 Manual update files:
 
@@ -49,7 +52,8 @@ Manual update files:
 - `data/processed/teams.csv` and `data/processed/fixtures.csv` are loaded by the app when present.
 - `data/cache/` stores free public snapshots before import.
 
-See [docs/data-pipeline.md](docs/data-pipeline.md) for the import workflow.
+See [docs/official-fifa-data.md](docs/official-fifa-data.md) and
+[docs/data-pipeline.md](docs/data-pipeline.md) for the import workflow.
 
 ## Model Summary
 

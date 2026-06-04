@@ -2,6 +2,10 @@
 
 ## Streamlit Community Cloud
 
+Run `make sync-fifa`, `make test`, and `make release-check` before deployment.
+Do not deploy while the release check fails; that means the app would fall back
+to demo data.
+
 1. Push this repository to GitHub.
 2. Create a new Streamlit app that points to `app.py`.
 3. Use Python 3.11 or newer.

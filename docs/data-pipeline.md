@@ -83,3 +83,14 @@ The Streamlit app loads data in this order:
 2. bundled demo data if processed files are missing.
 
 The sidebar shows the active data source.
+
+## Official FIFA Shortcut
+
+For the 2026 World Cup, prefer:
+
+```bash
+world-cup-oracle sync-fifa --apply
+```
+
+That command fetches FIFA's public calendar, validates the strict 2026 group
+stage, writes processed fixtures, and updates completed official results.

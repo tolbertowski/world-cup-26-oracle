@@ -105,6 +105,31 @@ def apply_team_adjustments(
     return adjusted
 
 
+def write_match_updates(path: Path, updates: dict[str, MatchResult]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.DictWriter(handle, fieldnames=MANUAL_MATCH_COLUMNS, lineterminator="\n")
+        writer.writeheader()
+        for result in sorted(updates.values(), key=lambda item: item.match_id):
+            writer.writerow(
+                {
+                    "match_id": result.match_id,
+                    "home_goals": result.home_goals,
+                    "away_goals": result.away_goals,
+                    "home_penalties": result.home_penalties or "",
+                    "away_penalties": result.away_penalties or "",
+                    "home_yellow_cards": result.home_yellow_cards or "",
+                    "away_yellow_cards": result.away_yellow_cards or "",
+                    "home_red_cards": result.home_red_cards or "",
+                    "away_red_cards": result.away_red_cards or "",
+                    "home_corners": result.home_corners or "",
+                    "away_corners": result.away_corners or "",
+                    "played_at": "",
+                    "notes": result.notes or "",
+                }
+            )
+
+
 def write_manual_templates(manual_dir: Path) -> list[Path]:
     manual_dir.mkdir(parents=True, exist_ok=True)
     match_path = manual_dir / "match_updates.csv"

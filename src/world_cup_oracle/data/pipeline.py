@@ -104,7 +104,7 @@ def export_processed_data(teams: list[Team], fixtures: list[Fixture], processed_
     teams_path = processed_dir / "teams.csv"
     fixtures_path = processed_dir / "fixtures.csv"
     with teams_path.open("w", newline="", encoding="utf-8") as handle:
-        writer = csv.DictWriter(handle, fieldnames=TEAM_SOURCE_COLUMNS)
+        writer = csv.DictWriter(handle, fieldnames=TEAM_SOURCE_COLUMNS, lineterminator="\n")
         writer.writeheader()
         for team in teams:
             writer.writerow(
@@ -118,7 +118,7 @@ def export_processed_data(teams: list[Team], fixtures: list[Fixture], processed_
                 }
             )
     with fixtures_path.open("w", newline="", encoding="utf-8") as handle:
-        writer = csv.DictWriter(handle, fieldnames=FIXTURE_SOURCE_COLUMNS)
+        writer = csv.DictWriter(handle, fieldnames=FIXTURE_SOURCE_COLUMNS, lineterminator="\n")
         writer.writeheader()
         for fixture in fixtures:
             writer.writerow(
@@ -150,6 +150,16 @@ def load_processed_or_demo(processed_dir: Path) -> TournamentData:
         fixtures=build_demo_fixtures(),
         source="demo",
     )
+
+
+def release_check(processed_dir: Path) -> DataValidationReport:
+    teams_path = processed_dir / "teams.csv"
+    fixtures_path = processed_dir / "fixtures.csv"
+    if not teams_path.exists() or not fixtures_path.exists():
+        return DataValidationReport(errors=["Release blocked: processed official data is missing; app would use demo data."])
+    teams = read_teams_csv(teams_path)
+    fixtures = read_fixtures_csv(fixtures_path)
+    return validate_tournament_data(teams, fixtures, strict=True)
 
 
 def validate_tournament_data(
@@ -238,7 +248,7 @@ def _write_header_if_missing(path: Path, columns: list[str]) -> None:
     if path.exists():
         return
     with path.open("w", newline="", encoding="utf-8") as handle:
-        writer = csv.writer(handle)
+        writer = csv.writer(handle, lineterminator="\n")
         writer.writerow(columns)
 
 

@@ -1,4 +1,4 @@
-.PHONY: run test simulate init-data
+.PHONY: run test simulate init-data validate-templates sync-fifa release-check
 
 run:
 	streamlit run app.py
@@ -14,3 +14,9 @@ init-data:
 
 validate-templates:
 	PYTHONPATH=src python3 -m world_cup_oracle.cli validate-snapshot --teams data/raw/teams_template.csv --fixtures data/raw/fixtures_template.csv
+
+sync-fifa:
+	PYTHONPATH=src python3 -m world_cup_oracle.cli sync-fifa --apply
+
+release-check:
+	PYTHONPATH=src python3 -m world_cup_oracle.cli release-check
