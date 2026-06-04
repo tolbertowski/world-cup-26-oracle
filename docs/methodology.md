@@ -19,6 +19,13 @@ The engine supports:
 The Round of 32 template can be replaced with an official fixture snapshot
 without changing the model or app interface.
 
+## Data Pipeline
+
+Raw source CSVs are validated before they become app data. The pipeline checks
+team-code uniqueness, fixture references, group shape, duplicate match IDs, and
+strict 2026 requirements when requested. Processed files live in
+`data/processed/` and override the bundled demo data.
+
 ## Match Model
 
 The baseline model uses an Elo-style rating interface. Ratings are transformed

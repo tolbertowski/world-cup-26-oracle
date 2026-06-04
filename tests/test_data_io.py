@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from world_cup_oracle.data.io import read_match_updates, read_team_adjustments, write_manual_templates
+from world_cup_oracle.cli import main
 from world_cup_oracle.domain import MethodOfWin
 
 
@@ -38,3 +39,24 @@ def test_read_team_adjustments_returns_numeric_deltas(tmp_path: Path) -> None:
 
     assert adjustments["BRA"]["rating_delta"] == 12
     assert adjustments["BRA"]["attack_delta"] == 0.1
+
+
+def test_cli_validate_snapshot(capsys, tmp_path: Path) -> None:
+    teams_path = tmp_path / "teams.csv"
+    fixtures_path = tmp_path / "fixtures.csv"
+    teams_path.write_text(
+        "team_code,team_name,group,confederation,fifa_rank,seed_rating\n"
+        "MEX,Mexico,A,CONCACAF,14,1760\n"
+        "RSA,South Africa,A,CAF,58,1580\n"
+        "KOR,South Korea,A,AFC,23,1715\n"
+        "CZE,Czech Republic,A,UEFA,32,1685\n",
+        encoding="utf-8",
+    )
+    fixtures_path.write_text(
+        "match_id,stage,home_team,away_team,group,kickoff,venue,neutral_site\n"
+        "G001,group,MEX,RSA,A,,,true\n",
+        encoding="utf-8",
+    )
+
+    assert main(["validate-snapshot", "--teams", str(teams_path), "--fixtures", str(fixtures_path)]) == 0
+    assert "WARNING" in capsys.readouterr().out

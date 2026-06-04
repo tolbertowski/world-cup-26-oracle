@@ -7,7 +7,7 @@ from pathlib import Path
 import pandas as pd
 import plotly.express as px
 
-from world_cup_oracle.data import build_demo_fixtures, build_demo_teams
+from world_cup_oracle.data import load_processed_or_demo
 from world_cup_oracle.data.io import (
     apply_team_adjustments,
     read_match_updates,
@@ -36,7 +36,7 @@ def main() -> None:
         initial_sidebar_state="expanded",
     )
     _inject_css(st)
-    teams, fixtures, predictor, locked_results = _load_demo_context()
+    teams, fixtures, predictor, locked_results, source = _load_tournament_context()
     team_names = {team.code: team.name for team in teams}
 
     with st.sidebar:
@@ -48,6 +48,7 @@ def main() -> None:
         )
         simulations = st.slider("Simulations", min_value=100, max_value=3000, value=750, step=100)
         seed = st.number_input("Seed", min_value=1, max_value=9999, value=26, step=1)
+        st.caption(f"Data source: {source}")
 
     if page == "Dashboard":
         _dashboard(st, teams, fixtures, predictor, simulations, seed, team_names, locked_results)
@@ -242,14 +243,15 @@ def _simulate(
     )
 
 
-def _load_demo_context() -> tuple[list[Team], list[Fixture], MatchPredictor, dict]:
-    teams = build_demo_teams()
-    fixtures = build_demo_fixtures()
+def _load_tournament_context() -> tuple[list[Team], list[Fixture], MatchPredictor, dict, str]:
+    tournament_data = load_processed_or_demo(ROOT / "data" / "processed")
+    teams = tournament_data.teams
+    fixtures = tournament_data.fixtures
     predictor = MatchPredictor.from_teams(teams)
     adjustments = read_team_adjustments(ROOT / "data" / "manual" / "team_adjustments.csv")
     predictor = MatchPredictor(apply_team_adjustments(predictor.ratings, adjustments))
     locked_results = read_match_updates(ROOT / "data" / "manual" / "match_updates.csv")
-    return teams, fixtures, predictor, locked_results
+    return teams, fixtures, predictor, locked_results, tournament_data.source
 
 
 def _prediction_metrics(st, prediction: MatchPrediction, team_names: dict[str, str]) -> None:

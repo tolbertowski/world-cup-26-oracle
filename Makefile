@@ -11,3 +11,6 @@ simulate:
 
 init-data:
 	PYTHONPATH=src python3 -m world_cup_oracle.cli init-data
+
+validate-templates:
+	PYTHONPATH=src python3 -m world_cup_oracle.cli validate-snapshot --teams data/raw/teams_template.csv --fixtures data/raw/fixtures_template.csv

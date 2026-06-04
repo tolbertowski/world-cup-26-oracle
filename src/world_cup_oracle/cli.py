@@ -7,6 +7,13 @@ from pathlib import Path
 
 from world_cup_oracle.data import build_demo_fixtures, build_demo_teams
 from world_cup_oracle.data.io import cache_url, write_manual_templates
+from world_cup_oracle.data.pipeline import (
+    import_tournament_snapshot,
+    read_fixtures_csv,
+    read_teams_csv,
+    validate_tournament_data,
+    write_source_templates,
+)
 from world_cup_oracle.models import MatchPredictor
 from world_cup_oracle.simulation import run_monte_carlo
 
@@ -22,7 +29,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="Show package version and exit.",
     )
     subparsers = parser.add_subparsers(dest="command")
-    subparsers.add_parser("init-data", help="Create manual CSV templates.")
+    subparsers.add_parser("init-data", help="Create manual and source CSV templates.")
 
     refresh = subparsers.add_parser("cache-url", help="Cache a public free-data URL.")
     refresh.add_argument("url")
@@ -31,6 +38,16 @@ def build_parser() -> argparse.ArgumentParser:
     simulate = subparsers.add_parser("simulate-demo", help="Run demo Monte Carlo predictions.")
     simulate.add_argument("--simulations", type=int, default=500)
     simulate.add_argument("--seed", type=int, default=26)
+
+    validate = subparsers.add_parser("validate-snapshot", help="Validate raw tournament CSVs.")
+    validate.add_argument("--teams", type=Path, required=True)
+    validate.add_argument("--fixtures", type=Path, required=True)
+    validate.add_argument("--strict", action="store_true", help="Require a full 48-team, 72-group-fixture snapshot.")
+
+    import_snapshot = subparsers.add_parser("import-snapshot", help="Validate and export raw CSVs into data/processed.")
+    import_snapshot.add_argument("--teams", type=Path, required=True)
+    import_snapshot.add_argument("--fixtures", type=Path, required=True)
+    import_snapshot.add_argument("--strict", action="store_true", help="Require a full 48-team, 72-group-fixture snapshot.")
     return parser
 
 
@@ -43,7 +60,10 @@ def main(argv: list[str] | None = None) -> int:
         print(__version__)
         return 0
     if args.command == "init-data":
-        paths = write_manual_templates(PROJECT_ROOT / "data" / "manual")
+        paths = [
+            *write_manual_templates(PROJECT_ROOT / "data" / "manual"),
+            *write_source_templates(PROJECT_ROOT / "data" / "raw"),
+        ]
         for path in paths:
             print(path)
         return 0
@@ -63,6 +83,23 @@ def main(argv: list[str] | None = None) -> int:
         for team, probability in list(summary.champion_probs.items())[:10]:
             print(f"{team},{probability:.4f}")
         return 0
+    if args.command == "validate-snapshot":
+        report = validate_tournament_data(
+            read_teams_csv(args.teams),
+            read_fixtures_csv(args.fixtures),
+            strict=args.strict,
+        )
+        print(report.render())
+        return 0 if report.ok else 1
+    if args.command == "import-snapshot":
+        report = import_tournament_snapshot(
+            args.teams,
+            args.fixtures,
+            PROJECT_ROOT / "data" / "processed",
+            strict=args.strict,
+        )
+        print(report.render())
+        return 0 if report.ok else 1
     parser.print_help()
     return 0
 

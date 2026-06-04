@@ -29,6 +29,8 @@ Useful commands:
 ```bash
 world-cup-oracle --version
 world-cup-oracle init-data
+world-cup-oracle validate-snapshot --teams data/raw/teams.csv --fixtures data/raw/fixtures.csv
+world-cup-oracle import-snapshot --teams data/raw/teams.csv --fixtures data/raw/fixtures.csv
 world-cup-oracle simulate-demo --simulations 1000 --seed 26
 world-cup-oracle cache-url "https://example.com/free-data.csv" --name source.csv
 ```
@@ -43,7 +45,11 @@ Manual update files:
 
 - `data/manual/match_updates.csv` locks played matches, penalties, cards, corners, and notes.
 - `data/manual/team_adjustments.csv` applies transparent rating/style adjustments.
+- `data/raw/teams_template.csv` and `data/raw/fixtures_template.csv` show the source CSV shape.
+- `data/processed/teams.csv` and `data/processed/fixtures.csv` are loaded by the app when present.
 - `data/cache/` stores free public snapshots before import.
+
+See [docs/data-pipeline.md](docs/data-pipeline.md) for the import workflow.
 
 ## Model Summary
 
