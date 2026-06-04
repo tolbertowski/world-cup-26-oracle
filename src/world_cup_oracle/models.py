@@ -41,6 +41,8 @@ class EloRatingModel:
                 rating=team.seed_rating,
                 attack=max(0.75, 1.0 + (team.seed_rating - 1500.0) / 2200.0),
                 defense=max(0.75, 1.0 + (team.seed_rating - 1500.0) / 2600.0),
+                discipline=_style_value(team.code, low=0.86, high=1.22),
+                tempo=_style_value(team.code[::-1], low=0.88, high=1.18),
                 recent_form=0.0,
             )
             for team in teams
@@ -114,6 +116,13 @@ class MatchPredictor:
                 MethodOfWin.DRAW: regulation_draw,
             }
 
+        home_corners, away_corners, home_cards, away_cards = self._event_projections(
+            home_rating,
+            away_rating,
+            home_xg,
+            away_xg,
+        )
+
         return MatchPrediction(
             fixture=fixture,
             home_win=home_win,
@@ -121,16 +130,18 @@ class MatchPredictor:
             away_win=away_win,
             expected_home_goals=home_xg,
             expected_away_goals=away_xg,
-            expected_home_corners=0.0,
-            expected_away_corners=0.0,
-            expected_home_cards=0.0,
-            expected_away_cards=0.0,
+            expected_home_corners=home_corners,
+            expected_away_corners=away_corners,
+            expected_home_cards=home_cards,
+            expected_away_cards=away_cards,
             method_probs=_normalize_method_probs(method_probs),
             scoreline_probs=scorelines,
             explanation=[
                 f"{fixture.home_team} rating {home_rating.rating:.0f}",
                 f"{fixture.away_team} rating {away_rating.rating:.0f}",
                 f"Expected goals: {home_xg:.2f}-{away_xg:.2f}",
+                f"Corners lean: {home_corners:.1f}-{away_corners:.1f}",
+                f"Cards lean: {home_cards:.1f}-{away_cards:.1f}",
             ],
         )
 
@@ -141,6 +152,34 @@ class MatchPredictor:
         away_xg = base * exp(-0.36 * rating_gap) * away.attack / max(0.45, home.defense)
         scale = self.average_total_goals / max(0.1, home_xg + away_xg)
         return max(0.15, home_xg * scale), max(0.15, away_xg * scale)
+
+    def _event_projections(
+        self,
+        home: TeamRating,
+        away: TeamRating,
+        home_xg: float,
+        away_xg: float,
+    ) -> tuple[float, float, float, float]:
+        total_xg = max(0.1, home_xg + away_xg)
+        home_attack_share = home_xg / total_xg
+        away_attack_share = away_xg / total_xg
+
+        total_corners = 9.7 * ((home.tempo + away.tempo) / 2.0)
+        home_corners = total_corners * (0.34 + 0.66 * home_attack_share) * home.tempo
+        away_corners = total_corners * (0.34 + 0.66 * away_attack_share) * away.tempo
+        corner_scale = total_corners / max(0.1, home_corners + away_corners)
+
+        home_underdog_pressure = max(0.0, away.rating - home.rating) / 850.0
+        away_underdog_pressure = max(0.0, home.rating - away.rating) / 850.0
+        home_cards = 1.9 * home.discipline * (1.0 + home_underdog_pressure)
+        away_cards = 1.9 * away.discipline * (1.0 + away_underdog_pressure)
+
+        return (
+            max(1.0, home_corners * corner_scale),
+            max(1.0, away_corners * corner_scale),
+            max(0.4, home_cards),
+            max(0.4, away_cards),
+        )
 
 
 def scoreline_distribution(
@@ -176,6 +215,11 @@ def _poisson_pmf(k: int, rate: float) -> float:
 
 def _logistic(value: float) -> float:
     return 1.0 / (1.0 + exp(-value))
+
+
+def _style_value(code: str, *, low: float, high: float) -> float:
+    stable = sum((index + 1) * ord(char) for index, char in enumerate(code))
+    return low + (stable % 100) / 99.0 * (high - low)
 
 
 def _normalize_method_probs(probs: dict[MethodOfWin, float]) -> dict[MethodOfWin, float]:
