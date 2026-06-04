@@ -8,6 +8,11 @@ import pandas as pd
 import plotly.express as px
 
 from world_cup_oracle.data import build_demo_fixtures, build_demo_teams
+from world_cup_oracle.data.io import (
+    apply_team_adjustments,
+    read_match_updates,
+    read_team_adjustments,
+)
 from world_cup_oracle.domain import Fixture, MatchPrediction, Team
 from world_cup_oracle.models import MatchPredictor
 from world_cup_oracle.simulation import run_monte_carlo
@@ -31,7 +36,7 @@ def main() -> None:
         initial_sidebar_state="expanded",
     )
     _inject_css(st)
-    teams, fixtures, predictor = _load_demo_context()
+    teams, fixtures, predictor, locked_results = _load_demo_context()
     team_names = {team.code: team.name for team in teams}
 
     with st.sidebar:
@@ -45,21 +50,30 @@ def main() -> None:
         seed = st.number_input("Seed", min_value=1, max_value=9999, value=26, step=1)
 
     if page == "Dashboard":
-        _dashboard(st, teams, fixtures, predictor, simulations, seed, team_names)
+        _dashboard(st, teams, fixtures, predictor, simulations, seed, team_names, locked_results)
     elif page == "Match Predictor":
         _match_predictor(st, fixtures, predictor, team_names)
     elif page == "Tournament Simulator":
-        _tournament_simulator(st, teams, fixtures, predictor, simulations, seed, team_names)
+        _tournament_simulator(st, teams, fixtures, predictor, simulations, seed, team_names, locked_results)
     elif page == "Model Check":
         _model_check(st, teams, predictor)
     else:
         _data_update(st)
 
 
-def _dashboard(st, teams: list[Team], fixtures: list[Fixture], predictor: MatchPredictor, simulations: int, seed: int, team_names: dict[str, str]) -> None:
+def _dashboard(
+    st,
+    teams: list[Team],
+    fixtures: list[Fixture],
+    predictor: MatchPredictor,
+    simulations: int,
+    seed: int,
+    team_names: dict[str, str],
+    locked_results: dict,
+) -> None:
     st.title("World Cup 26 Oracle")
     st.caption("Match odds, scorelines, cards, corners, upsets, and bracket chaos.")
-    summary = _simulate(teams, fixtures, predictor, simulations, seed)
+    summary = _simulate(teams, fixtures, predictor, simulations, seed, locked_results)
     champion_rows = _probability_rows(summary.champion_probs, team_names).head(12)
     finalist_rows = _probability_rows(summary.finalist_probs, team_names).head(12)
     upset_rows = _probability_rows(summary.upset_probs, {}).head(8)
@@ -127,9 +141,18 @@ def _match_predictor(st, fixtures: list[Fixture], predictor: MatchPredictor, tea
             st.write(item)
 
 
-def _tournament_simulator(st, teams: list[Team], fixtures: list[Fixture], predictor: MatchPredictor, simulations: int, seed: int, team_names: dict[str, str]) -> None:
+def _tournament_simulator(
+    st,
+    teams: list[Team],
+    fixtures: list[Fixture],
+    predictor: MatchPredictor,
+    simulations: int,
+    seed: int,
+    team_names: dict[str, str],
+    locked_results: dict,
+) -> None:
     st.title("Tournament Simulator")
-    summary = _simulate(teams, fixtures, predictor, simulations, seed)
+    summary = _simulate(teams, fixtures, predictor, simulations, seed, locked_results)
 
     groups = sorted(summary.group_winner_probs)
     selected_group = st.segmented_control("Group", groups, default=groups[0])
@@ -183,6 +206,11 @@ def _model_check(st, teams: list[Team], predictor: MatchPredictor) -> None:
 def _data_update(st) -> None:
     st.title("Data Update")
     st.caption("Manual-assisted workflow for tournament results and model adjustments.")
+    updates = read_match_updates(ROOT / "data" / "manual" / "match_updates.csv")
+    adjustments = read_team_adjustments(ROOT / "data" / "manual" / "team_adjustments.csv")
+    col1, col2 = st.columns(2)
+    col1.metric("Locked matches", len(updates))
+    col2.metric("Team adjustments", len(adjustments))
     st.subheader("Tracked Templates")
     rows = [
         {"File": "data/manual/match_updates.csv", "Purpose": "Lock played matches, cards, corners, and notes."},
@@ -196,14 +224,32 @@ def _data_update(st) -> None:
         st.dataframe(pd.read_csv(uploaded), use_container_width=True)
 
 
-def _simulate(teams: list[Team], fixtures: list[Fixture], predictor: MatchPredictor, simulations: int, seed: int):
-    return run_monte_carlo(teams, fixtures, predictor, simulations=simulations, seed=seed)
+def _simulate(
+    teams: list[Team],
+    fixtures: list[Fixture],
+    predictor: MatchPredictor,
+    simulations: int,
+    seed: int,
+    locked_results: dict,
+):
+    return run_monte_carlo(
+        teams,
+        fixtures,
+        predictor,
+        simulations=simulations,
+        seed=seed,
+        locked_results=locked_results,
+    )
 
 
-def _load_demo_context() -> tuple[list[Team], list[Fixture], MatchPredictor]:
+def _load_demo_context() -> tuple[list[Team], list[Fixture], MatchPredictor, dict]:
     teams = build_demo_teams()
     fixtures = build_demo_fixtures()
-    return teams, fixtures, MatchPredictor.from_teams(teams)
+    predictor = MatchPredictor.from_teams(teams)
+    adjustments = read_team_adjustments(ROOT / "data" / "manual" / "team_adjustments.csv")
+    predictor = MatchPredictor(apply_team_adjustments(predictor.ratings, adjustments))
+    locked_results = read_match_updates(ROOT / "data" / "manual" / "match_updates.csv")
+    return teams, fixtures, predictor, locked_results
 
 
 def _prediction_metrics(st, prediction: MatchPrediction, team_names: dict[str, str]) -> None:
