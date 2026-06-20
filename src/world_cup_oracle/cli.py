@@ -39,7 +39,7 @@ from world_cup_oracle.data.player_callups import (
     build_player_callup_adjustments,
     read_player_callups,
 )
-from world_cup_oracle.models import MatchPredictor
+from world_cup_oracle.models import MatchPredictor, apply_results_to_ratings
 from world_cup_oracle.simulation import project_bracket, run_monte_carlo
 
 
@@ -266,6 +266,7 @@ def main(argv: list[str] | None = None) -> int:
         predictor = MatchPredictor.from_teams(tournament.teams)
         predictor = MatchPredictor(apply_team_adjustments(predictor.ratings, adjustments))
         locked = read_match_updates(PROJECT_ROOT / "data" / "manual" / "match_updates.csv")
+        predictor = MatchPredictor(apply_results_to_ratings(predictor.ratings, tournament.fixtures, locked))
         bracket = project_bracket(tournament.teams, tournament.fixtures, predictor, locked)
         names = {team.code: team.name for team in tournament.teams}
         for stage, matches in bracket.rounds:

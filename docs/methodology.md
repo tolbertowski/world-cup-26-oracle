@@ -58,6 +58,17 @@ the `international_results:` note prefix, coexisting idempotently with the
 rows. Because the dataset is goals-only, this fit informs ratings, expected
 goals, scorelines, and win/draw/loss — but **not** cards or corners.
 
+## In-Tournament Rating Updates
+
+Played results locked in `match_updates.csv` do more than fix group standings:
+they nudge each team's overall rating via an Elo update (`apply_results_to_ratings`
+in `models.py`), scaled by margin of victory, before any prediction or
+simulation. The winner's rating rises and the loser's falls, so an upset carries
+forward into the knockout rounds as a real strength change rather than only a
+group-table reshuffle. Updates use only real results — simulated games never feed
+back — and touch only the overall rating, leaving attack/defense/discipline/tempo
+as set by the base model and adjustments.
+
 ## Player Call-Up Layer
 
 Player call-ups do not replace team Elo. They generate bounded adjustments on
