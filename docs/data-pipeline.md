@@ -84,6 +84,39 @@ The Streamlit app loads data in this order:
 
 The sidebar shows the active data source.
 
+## Player Call-Up Adjustments
+
+Player call-ups are a reviewed manual layer, not a live dependency. Fill
+`data/manual/player_callups.csv` with one row per called-up player:
+
+```text
+team_code,player_name,position,expected_role,player_rating,minutes_share,availability,club_strength,market_value_eur,notes
+```
+
+Recommended inputs:
+
+- `player_rating`: source-agnostic 0-100 player score when available.
+- `expected_role`: `starter`, `key`, `regular`, `rotation`, `squad`, `bench`, `fringe`, `reserve`, `injured`, or `out`.
+- `minutes_share`: optional override from 0-1 or 0-100. Use this for likely starters and injury-managed players.
+- `availability`: 0-1 or 0-100 injury/suspension availability.
+- `club_strength` and `market_value_eur`: fallback signals when a direct player rating is missing.
+
+Preview the generated team deltas:
+
+```bash
+world-cup-oracle apply-player-callups --dry-run
+```
+
+Apply them into `data/manual/team_adjustments.csv`:
+
+```bash
+world-cup-oracle apply-player-callups
+```
+
+The command replaces previous `player_callups:` generated rows and preserves
+other manual rows. When the app reads team adjustments, duplicate team rows are
+summed, so manual context and generated squad deltas can coexist.
+
 ## Official FIFA Shortcut
 
 For the 2026 World Cup, prefer:

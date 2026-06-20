@@ -36,6 +36,23 @@ probabilities.
 Knockout draws are resolved into eventual win probabilities using rating edge,
 with method probabilities split between regulation, extra time, and penalties.
 
+## Player Call-Up Layer
+
+Player call-ups do not replace team Elo. They generate bounded adjustments on
+top of the team baseline, which keeps the model stable while still reacting to
+final squads, injuries, and likely starters.
+
+The call-up model scores each player from a direct 0-100 rating when supplied,
+or from club strength and market value as fallback signals. Expected role,
+minutes share, and availability convert the squad list into an involvement
+weight. The model then blends the top 11 core and next 7 depth players into a
+squad score, derives attack/defense/tempo position scores, and converts the
+difference from the tournament baseline into rating/style deltas.
+
+Generated rating movement is capped at 80 Elo-style points. Attack, defense,
+and tempo deltas are also capped, and discipline is left unchanged because the
+current player input file does not include reliable card-risk features.
+
 ## Projected Bracket
 
 The Bracket view is a single deterministic projection, distinct from the Monte

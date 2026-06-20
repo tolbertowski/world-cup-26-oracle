@@ -33,6 +33,19 @@ TEAM_ADJUSTMENT_COLUMNS = [
     "tempo_delta",
     "notes",
 ]
+GENERATED_PLAYER_ADJUSTMENT_PREFIX = "player_callups:"
+PLAYER_CALLUP_COLUMNS = [
+    "team_code",
+    "player_name",
+    "position",
+    "expected_role",
+    "player_rating",
+    "minutes_share",
+    "availability",
+    "club_strength",
+    "market_value_eur",
+    "notes",
+]
 
 
 def read_match_updates(path: Path) -> dict[str, MatchResult]:
@@ -71,16 +84,25 @@ def read_team_adjustments(path: Path) -> dict[str, dict[str, float]]:
         reader = csv.DictReader(handle)
         adjustments: dict[str, dict[str, float]] = {}
         for row in reader:
-            code = row.get("team_code")
-            if not code:
+            raw_code = row.get("team_code")
+            if not raw_code:
                 continue
-            adjustments[code] = {
-                "rating_delta": _float(row.get("rating_delta")),
-                "attack_delta": _float(row.get("attack_delta")),
-                "defense_delta": _float(row.get("defense_delta")),
-                "discipline_delta": _float(row.get("discipline_delta")),
-                "tempo_delta": _float(row.get("tempo_delta")),
-            }
+            code = raw_code.strip().upper()
+            current = adjustments.setdefault(
+                code,
+                {
+                    "rating_delta": 0.0,
+                    "attack_delta": 0.0,
+                    "defense_delta": 0.0,
+                    "discipline_delta": 0.0,
+                    "tempo_delta": 0.0,
+                },
+            )
+            current["rating_delta"] += _float(row.get("rating_delta"))
+            current["attack_delta"] += _float(row.get("attack_delta"))
+            current["defense_delta"] += _float(row.get("defense_delta"))
+            current["discipline_delta"] += _float(row.get("discipline_delta"))
+            current["tempo_delta"] += _float(row.get("tempo_delta"))
     return adjustments
 
 
@@ -134,9 +156,26 @@ def write_manual_templates(manual_dir: Path) -> list[Path]:
     manual_dir.mkdir(parents=True, exist_ok=True)
     match_path = manual_dir / "match_updates.csv"
     team_path = manual_dir / "team_adjustments.csv"
+    player_callups_path = manual_dir / "player_callups.csv"
     _write_header_if_missing(match_path, MANUAL_MATCH_COLUMNS)
     _write_header_if_missing(team_path, TEAM_ADJUSTMENT_COLUMNS)
-    return [match_path, team_path]
+    _write_header_if_missing(player_callups_path, PLAYER_CALLUP_COLUMNS)
+    return [match_path, team_path, player_callups_path]
+
+
+def upsert_generated_team_adjustments(
+    path: Path,
+    rows: list[dict[str, str | float]],
+    *,
+    note_prefix: str = GENERATED_PLAYER_ADJUSTMENT_PREFIX,
+) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    kept_rows = _read_adjustment_rows_without_generated(path, note_prefix=note_prefix)
+    with path.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.DictWriter(handle, fieldnames=TEAM_ADJUSTMENT_COLUMNS, lineterminator="\n")
+        writer.writeheader()
+        writer.writerows(kept_rows)
+        writer.writerows(_normalize_adjustment_row(row) for row in rows)
 
 
 def cache_url(url: str, cache_dir: Path, name: str | None = None) -> Path:
@@ -154,6 +193,26 @@ def _write_header_if_missing(path: Path, columns: list[str]) -> None:
     with path.open("w", newline="", encoding="utf-8") as handle:
         writer = csv.writer(handle)
         writer.writerow(columns)
+
+
+def _read_adjustment_rows_without_generated(path: Path, *, note_prefix: str) -> list[dict[str, str]]:
+    if not path.exists():
+        return []
+    with path.open(newline="", encoding="utf-8") as handle:
+        reader = csv.DictReader(handle)
+        rows: list[dict[str, str]] = []
+        for row in reader:
+            notes = row.get("notes") or ""
+            if notes.startswith(note_prefix):
+                continue
+            rows.append({column: row.get(column, "") for column in TEAM_ADJUSTMENT_COLUMNS})
+        return rows
+
+
+def _normalize_adjustment_row(row: dict[str, str | float]) -> dict[str, str | float]:
+    normalized = {column: row.get(column, "") for column in TEAM_ADJUSTMENT_COLUMNS}
+    normalized["team_code"] = str(normalized["team_code"]).strip().upper()
+    return normalized
 
 
 def _infer_method(row: dict[str, str]) -> MethodOfWin:
