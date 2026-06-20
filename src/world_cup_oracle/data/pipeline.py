@@ -8,7 +8,7 @@ then import it into `data/processed/`.
 from __future__ import annotations
 
 import csv
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 
 from world_cup_oracle.data.sample import build_demo_fixtures, build_demo_teams
@@ -99,11 +99,9 @@ def import_tournament_snapshot(
     return report
 
 
-def export_processed_data(teams: list[Team], fixtures: list[Fixture], processed_dir: Path) -> list[Path]:
-    processed_dir.mkdir(parents=True, exist_ok=True)
-    teams_path = processed_dir / "teams.csv"
-    fixtures_path = processed_dir / "fixtures.csv"
-    with teams_path.open("w", newline="", encoding="utf-8") as handle:
+def write_teams_csv(teams: list[Team], path: Path) -> Path:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", newline="", encoding="utf-8") as handle:
         writer = csv.DictWriter(handle, fieldnames=TEAM_SOURCE_COLUMNS, lineterminator="\n")
         writer.writeheader()
         for team in teams:
@@ -117,6 +115,24 @@ def export_processed_data(teams: list[Team], fixtures: list[Fixture], processed_
                     "seed_rating": team.seed_rating,
                 }
             )
+    return path
+
+
+def update_seed_ratings(teams_path: Path, ratings_by_code: dict[str, float]) -> list[Team]:
+    """Rewrite teams.csv with new seed ratings, leaving unmatched teams unchanged."""
+    teams = read_teams_csv(teams_path)
+    updated = [
+        replace(team, seed_rating=round(ratings_by_code[team.code], 1)) if team.code in ratings_by_code else team
+        for team in teams
+    ]
+    write_teams_csv(updated, teams_path)
+    return updated
+
+
+def export_processed_data(teams: list[Team], fixtures: list[Fixture], processed_dir: Path) -> list[Path]:
+    processed_dir.mkdir(parents=True, exist_ok=True)
+    teams_path = write_teams_csv(teams, processed_dir / "teams.csv")
+    fixtures_path = processed_dir / "fixtures.csv"
     with fixtures_path.open("w", newline="", encoding="utf-8") as handle:
         writer = csv.DictWriter(handle, fieldnames=FIXTURE_SOURCE_COLUMNS, lineterminator="\n")
         writer.writeheader()

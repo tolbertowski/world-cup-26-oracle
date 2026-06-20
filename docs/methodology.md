@@ -36,6 +36,28 @@ probabilities.
 Knockout draws are resolved into eventual win probabilities using rating edge,
 with method probabilities split between regulation, extra time, and penalties.
 
+## Historical Ratings Fit
+
+Team ratings are fit from the `martj42/international_results` dataset (every
+men's senior international, goals only) via the `fit-ratings` command. The fit
+replays the full match history into a running Elo rating whose K-factor is scaled
+by match importance (World Cup 1.0, qualifiers/continental finals lower,
+friendlies 0.3). Elo carries no explicit time decay because a running rating
+already reflects recent form as older results wash out.
+
+In parallel, weighted goals-for and goals-against per team — recency-weighted
+with a ~3-year half-life and opponent-strength corrected — produce attacking and
+defending multipliers. These are damped and clamped, then written as bounded
+`attack_delta`/`defense_delta` rows (the goal-pattern residual on top of what the
+overall rating already implies, so strength is not double-counted).
+
+The fitted Elo is written to `seed_rating` in `data/processed/teams.csv`; the
+attack/defense residuals are merged into `data/manual/team_adjustments.csv` under
+the `international_results:` note prefix, coexisting idempotently with the
+`player_callups:` rows. Re-running the command refreshes only those generated
+rows. Because the dataset is goals-only, this fit informs ratings, expected
+goals, scorelines, and win/draw/loss — but **not** cards or corners.
+
 ## Player Call-Up Layer
 
 Player call-ups do not replace team Elo. They generate bounded adjustments on
@@ -67,8 +89,11 @@ always honored over projections.
 ## Cards and Corners
 
 Cards and corners are v1 projections, not claims of deep player-level modeling.
-They use team tempo, discipline, attacking share, and underdog pressure. This
-keeps the app useful while leaving room for richer data later.
+They use team tempo, discipline, attacking share, and underdog pressure. The
+historical results dataset contains no card, corner, or referee data, so these
+projections (and the underlying tempo/discipline factors) remain heuristic and
+are not fit from data. Richer modeling would require a club-league dataset that
+records corners, cards, and referees.
 
 ## Backtesting
 

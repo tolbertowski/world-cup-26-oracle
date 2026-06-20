@@ -117,6 +117,36 @@ The command replaces previous `player_callups:` generated rows and preserves
 other manual rows. When the app reads team adjustments, duplicate team rows are
 summed, so manual context and generated squad deltas can coexist.
 
+## Historical Ratings Fit
+
+Replace the placeholder seed ratings with ratings fit from real results. First
+cache the goals-only `martj42/international_results` snapshot (it is gitignored,
+not committed):
+
+```bash
+world-cup-oracle cache-url "https://raw.githubusercontent.com/martj42/international_results/master/results.csv" --name international_results.csv
+```
+
+Preview the fit without writing anything:
+
+```bash
+world-cup-oracle fit-ratings --dry-run
+```
+
+Apply it:
+
+```bash
+world-cup-oracle fit-ratings
+```
+
+This writes the fitted Elo into `seed_rating` in `data/processed/teams.csv` and
+merges `attack_delta`/`defense_delta` rows into
+`data/manual/team_adjustments.csv` under the `international_results:` prefix.
+Like the call-up command, it replaces only its own generated rows and leaves
+manual and `player_callups:` rows intact. The dataset is goals-only, so the fit
+does not touch cards, corners, discipline, or tempo. Use `--no-seed-rating` to
+write only the attack/defense deltas, or `--half-life-days` to tune recency.
+
 ## Official FIFA Shortcut
 
 For the 2026 World Cup, prefer:

@@ -34,6 +34,7 @@ TEAM_ADJUSTMENT_COLUMNS = [
     "notes",
 ]
 GENERATED_PLAYER_ADJUSTMENT_PREFIX = "player_callups:"
+GENERATED_RATINGS_PREFIX = "international_results:"
 PLAYER_CALLUP_COLUMNS = [
     "team_code",
     "player_name",

@@ -1,4 +1,6 @@
-.PHONY: run test simulate bracket init-data validate-templates sync-fifa player-callups release-check
+.PHONY: run test simulate bracket init-data validate-templates sync-fifa fit-ratings player-callups release-check
+
+RESULTS_URL = https://raw.githubusercontent.com/martj42/international_results/master/results.csv
 
 run:
 	streamlit run app.py
@@ -20,6 +22,10 @@ validate-templates:
 
 sync-fifa:
 	PYTHONPATH=src python3 -m world_cup_oracle.cli sync-fifa --apply
+
+fit-ratings:
+	PYTHONPATH=src python3 -m world_cup_oracle.cli cache-url "$(RESULTS_URL)" --name international_results.csv
+	PYTHONPATH=src python3 -m world_cup_oracle.cli fit-ratings
 
 player-callups:
 	PYTHONPATH=src python3 -m world_cup_oracle.cli apply-player-callups --dry-run
