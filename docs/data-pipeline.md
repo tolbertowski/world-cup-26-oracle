@@ -84,6 +84,69 @@ The Streamlit app loads data in this order:
 
 The sidebar shows the active data source.
 
+## Player Call-Up Adjustments
+
+Player call-ups are a reviewed manual layer, not a live dependency. Fill
+`data/manual/player_callups.csv` with one row per called-up player:
+
+```text
+team_code,player_name,position,expected_role,player_rating,minutes_share,availability,club_strength,market_value_eur,notes
+```
+
+Recommended inputs:
+
+- `player_rating`: source-agnostic 0-100 player score when available.
+- `expected_role`: `starter`, `key`, `regular`, `rotation`, `squad`, `bench`, `fringe`, `reserve`, `injured`, or `out`.
+- `minutes_share`: optional override from 0-1 or 0-100. Use this for likely starters and injury-managed players.
+- `availability`: 0-1 or 0-100 injury/suspension availability.
+- `club_strength` and `market_value_eur`: fallback signals when a direct player rating is missing.
+
+Preview the generated team deltas:
+
+```bash
+world-cup-oracle apply-player-callups --dry-run
+```
+
+Apply them into `data/manual/team_adjustments.csv`:
+
+```bash
+world-cup-oracle apply-player-callups
+```
+
+The command replaces previous `player_callups:` generated rows and preserves
+other manual rows. When the app reads team adjustments, duplicate team rows are
+summed, so manual context and generated squad deltas can coexist.
+
+## Historical Ratings Fit
+
+Replace the placeholder seed ratings with ratings fit from real results. First
+cache the goals-only `martj42/international_results` snapshot (it is gitignored,
+not committed):
+
+```bash
+world-cup-oracle cache-url "https://raw.githubusercontent.com/martj42/international_results/master/results.csv" --name international_results.csv
+```
+
+Preview the fit without writing anything:
+
+```bash
+world-cup-oracle fit-ratings --dry-run
+```
+
+Apply it:
+
+```bash
+world-cup-oracle fit-ratings
+```
+
+This writes the fitted Elo into `seed_rating` in `data/processed/teams.csv` and
+merges `attack_delta`/`defense_delta` rows into
+`data/manual/team_adjustments.csv` under the `international_results:` prefix.
+Like the call-up command, it replaces only its own generated rows and leaves
+manual and `player_callups:` rows intact. The dataset is goals-only, so the fit
+does not touch cards, corners, discipline, or tempo. Use `--no-seed-rating` to
+write only the attack/defense deltas, or `--half-life-days` to tune recency.
+
 ## Official FIFA Shortcut
 
 For the 2026 World Cup, prefer:

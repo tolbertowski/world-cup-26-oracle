@@ -39,8 +39,8 @@ class EloRatingModel:
             team.code: TeamRating(
                 team_code=team.code,
                 rating=team.seed_rating,
-                attack=max(0.75, 1.0 + (team.seed_rating - 1500.0) / 2200.0),
-                defense=max(0.75, 1.0 + (team.seed_rating - 1500.0) / 2600.0),
+                attack=attack_from_rating(team.seed_rating),
+                defense=defense_from_rating(team.seed_rating),
                 discipline=_style_value(team.code, low=0.86, high=1.22),
                 tempo=_style_value(team.code[::-1], low=0.88, high=1.18),
                 recent_form=0.0,
@@ -180,6 +180,16 @@ class MatchPredictor:
             max(0.4, home_cards),
             max(0.4, away_cards),
         )
+
+
+def attack_from_rating(rating: float) -> float:
+    """Baseline attacking multiplier implied by an overall Elo-style rating."""
+    return max(0.75, 1.0 + (rating - 1500.0) / 2200.0)
+
+
+def defense_from_rating(rating: float) -> float:
+    """Baseline defending multiplier implied by an overall Elo-style rating."""
+    return max(0.75, 1.0 + (rating - 1500.0) / 2600.0)
 
 
 def scoreline_distribution(

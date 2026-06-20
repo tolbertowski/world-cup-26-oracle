@@ -7,10 +7,12 @@ from pathlib import Path
 
 from world_cup_oracle.data import build_demo_fixtures, build_demo_teams, load_processed_or_demo
 from world_cup_oracle.data.io import (
+    GENERATED_RATINGS_PREFIX,
     apply_team_adjustments,
     cache_url,
     read_match_updates,
     read_team_adjustments,
+    upsert_generated_team_adjustments,
     write_manual_templates,
 )
 from world_cup_oracle.data.pipeline import (
@@ -18,12 +20,24 @@ from world_cup_oracle.data.pipeline import (
     read_fixtures_csv,
     read_teams_csv,
     release_check,
+    update_seed_ratings,
     validate_tournament_data,
     write_source_templates,
+)
+from world_cup_oracle.data.historical import (
+    DEFAULT_HALF_LIFE_DAYS,
+    RESULTS_URL,
+    fit_team_ratings,
+    read_results,
 )
 from world_cup_oracle.data.fifa_official import (
     FIFA_WORLD_CUP_2026_SEASON_ID,
     sync_fifa_calendar,
+)
+from world_cup_oracle.data.player_callups import (
+    DEFAULT_MAX_RATING_DELTA,
+    build_player_callup_adjustments,
+    read_player_callups,
 )
 from world_cup_oracle.models import MatchPredictor
 from world_cup_oracle.simulation import project_bracket, run_monte_carlo
@@ -59,6 +73,32 @@ def build_parser() -> argparse.ArgumentParser:
     import_snapshot.add_argument("--teams", type=Path, required=True)
     import_snapshot.add_argument("--fixtures", type=Path, required=True)
     import_snapshot.add_argument("--strict", action="store_true", help="Require a full 48-team, 72-group-fixture snapshot.")
+
+    player_callups = subparsers.add_parser(
+        "apply-player-callups",
+        help="Generate team adjustment deltas from reviewed player call-up CSVs.",
+    )
+    player_callups.add_argument("--callups", type=Path, default=PROJECT_ROOT / "data" / "manual" / "player_callups.csv")
+    player_callups.add_argument("--teams", type=Path, default=PROJECT_ROOT / "data" / "processed" / "teams.csv")
+    player_callups.add_argument("--output", type=Path, default=PROJECT_ROOT / "data" / "manual" / "team_adjustments.csv")
+    player_callups.add_argument("--baseline-score", type=float, help="Optional neutral squad score on a 0-100 scale.")
+    player_callups.add_argument("--max-rating-delta", type=float, default=DEFAULT_MAX_RATING_DELTA)
+    player_callups.add_argument("--dry-run", action="store_true", help="Print generated deltas without writing them.")
+
+    fit_ratings = subparsers.add_parser(
+        "fit-ratings",
+        help="Fit team Elo ratings and attack/defense from historical international results.",
+    )
+    fit_ratings.add_argument("--results", type=Path, default=PROJECT_ROOT / "data" / "cache" / "international_results.csv")
+    fit_ratings.add_argument("--teams", type=Path, default=PROJECT_ROOT / "data" / "processed" / "teams.csv")
+    fit_ratings.add_argument("--output", type=Path, default=PROJECT_ROOT / "data" / "manual" / "team_adjustments.csv")
+    fit_ratings.add_argument("--half-life-days", type=float, default=DEFAULT_HALF_LIFE_DAYS)
+    fit_ratings.add_argument(
+        "--no-seed-rating",
+        action="store_true",
+        help="Skip writing fitted Elo into teams.csv seed_rating.",
+    )
+    fit_ratings.add_argument("--dry-run", action="store_true", help="Print fitted ratings without writing them.")
 
     sync_fifa = subparsers.add_parser("sync-fifa", help="Sync official FIFA World Cup 2026 calendar data.")
     sync_fifa.add_argument("--season-id", default=FIFA_WORLD_CUP_2026_SEASON_ID)
@@ -126,6 +166,76 @@ def main(argv: list[str] | None = None) -> int:
         )
         print(report.render())
         return 0 if report.ok else 1
+    if args.command == "apply-player-callups":
+        callups = read_player_callups(args.callups)
+        if not callups:
+            print(f"No player callups found in {args.callups}.")
+            return 0 if args.dry_run else 1
+        teams = read_teams_csv(args.teams) if args.teams.exists() else []
+        try:
+            adjustments = build_player_callup_adjustments(
+                callups,
+                team_codes={team.code for team in teams} if teams else None,
+                baseline_score=args.baseline_score,
+                max_rating_delta=args.max_rating_delta,
+            )
+        except ValueError as exc:
+            print(exc)
+            return 1
+        rows = [adjustment.as_adjustment_row() for adjustment in adjustments]
+        if not args.dry_run:
+            upsert_generated_team_adjustments(args.output, rows)
+        print("team_code,rating_delta,attack_delta,defense_delta,tempo_delta,squad_score,players")
+        for adjustment in adjustments:
+            print(
+                f"{adjustment.team_code},"
+                f"{adjustment.rating_delta:.1f},"
+                f"{adjustment.attack_delta:.3f},"
+                f"{adjustment.defense_delta:.3f},"
+                f"{adjustment.tempo_delta:.3f},"
+                f"{adjustment.squad_score:.1f},"
+                f"{adjustment.player_count}"
+            )
+        if not args.dry_run:
+            print(f"updated={args.output}")
+        return 0
+    if args.command == "fit-ratings":
+        if not args.results.exists():
+            print(f"No results snapshot at {args.results}.")
+            print(f'Fetch it first: world-cup-oracle cache-url "{RESULTS_URL}" --name international_results.csv')
+            return 1
+        if not args.teams.exists():
+            print(f"No teams file at {args.teams}; run init-data or sync-fifa first.")
+            return 1
+        records = read_results(args.results)
+        teams = read_teams_csv(args.teams)
+        fitted, unmatched = fit_team_ratings(records, teams, half_life_days=args.half_life_days)
+        if not fitted:
+            print("No teams could be matched to the results dataset.")
+            return 1
+        rows = [item.as_adjustment_row(note_prefix=GENERATED_RATINGS_PREFIX) for item in fitted]
+        if not args.dry_run:
+            upsert_generated_team_adjustments(args.output, rows)
+            if not args.no_seed_rating:
+                update_seed_ratings(args.teams, {item.team_code: item.elo for item in fitted})
+        print("team_code,elo,attack,defense,attack_delta,defense_delta,matches")
+        for item in sorted(fitted, key=lambda value: value.elo, reverse=True):
+            print(
+                f"{item.team_code},"
+                f"{item.elo:.0f},"
+                f"{item.attack:.2f},"
+                f"{item.defense:.2f},"
+                f"{item.attack_delta:.3f},"
+                f"{item.defense_delta:.3f},"
+                f"{item.matches}"
+            )
+        if unmatched:
+            print(f"unmatched={','.join(unmatched)}")
+        if not args.dry_run:
+            print(f"updated={args.output}")
+            if not args.no_seed_rating:
+                print(f"seed_rating_updated={args.teams}")
+        return 0
     if args.command == "sync-fifa":
         result = sync_fifa_calendar(
             raw_dir=PROJECT_ROOT / "data" / "raw",

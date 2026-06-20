@@ -23,15 +23,16 @@ def test_read_match_updates_parses_locked_results(tmp_path: Path) -> None:
 def test_write_manual_templates_creates_headers(tmp_path: Path) -> None:
     paths = write_manual_templates(tmp_path)
 
-    assert {path.name for path in paths} == {"match_updates.csv", "team_adjustments.csv"}
+    assert {path.name for path in paths} == {"match_updates.csv", "team_adjustments.csv", "player_callups.csv"}
     assert "match_id" in (tmp_path / "match_updates.csv").read_text(encoding="utf-8")
+    assert "player_name" in (tmp_path / "player_callups.csv").read_text(encoding="utf-8")
 
 
 def test_read_team_adjustments_returns_numeric_deltas(tmp_path: Path) -> None:
     path = tmp_path / "team_adjustments.csv"
     path.write_text(
         "team_code,rating_delta,attack_delta,defense_delta,discipline_delta,tempo_delta,notes\n"
-        "BRA,12,0.1,-0.05,0.0,0.02,form\n",
+        "bra,12,0.1,-0.05,0.0,0.02,form\n",
         encoding="utf-8",
     )
 
