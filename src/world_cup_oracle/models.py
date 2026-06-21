@@ -9,7 +9,7 @@ interface later without changing the Streamlit app.
 from __future__ import annotations
 
 from dataclasses import replace
-from math import exp, factorial
+from math import exp, factorial, sqrt
 
 from world_cup_oracle.domain import (
     Fixture,
@@ -180,6 +180,49 @@ class MatchPredictor:
             max(0.4, home_cards),
             max(0.4, away_cards),
         )
+
+
+def margin_of_victory_multiplier(home_goals: int, away_goals: int) -> float:
+    """Diminishing Elo bonus for larger winning margins (1.0 for a one-goal game)."""
+    return sqrt(max(1, abs(home_goals - away_goals)))
+
+
+def apply_results_to_ratings(
+    ratings: dict[str, TeamRating],
+    fixtures: list[Fixture],
+    results: dict[str, MatchResult],
+    *,
+    k_factor: float = 32.0,
+    home_advantage: float = 0.0,
+) -> dict[str, TeamRating]:
+    """Nudge overall ratings by replaying played (locked) results through Elo.
+
+    Real results move a team's strength so an upset carries into later rounds:
+    the winner's rating rises and the loser's falls, scaled by the margin of
+    victory. Only ``rating`` changes — attack/defense/discipline/tempo are left
+    as set by the base model and adjustments. Results are applied in kickoff
+    order so sequential games compound correctly.
+    """
+    updated = dict(ratings)
+    fixtures_by_id = {fixture.match_id: fixture for fixture in fixtures}
+    ordered = sorted(
+        (result for match_id, result in results.items() if match_id in fixtures_by_id and result.locked),
+        key=lambda result: (fixtures_by_id[result.match_id].kickoff or "", result.match_id),
+    )
+    for result in ordered:
+        fixture = fixtures_by_id[result.match_id]
+        home = updated.get(fixture.home_team)
+        away = updated.get(fixture.away_team)
+        if home is None or away is None:
+            continue
+        advantage = 0.0 if fixture.neutral_site else home_advantage
+        expected_home = 1.0 / (1.0 + 10 ** ((away.rating - (home.rating + advantage)) / 400.0))
+        movement = k_factor * margin_of_victory_multiplier(result.home_goals, result.away_goals) * (
+            _actual_home_score(result) - expected_home
+        )
+        updated[fixture.home_team] = replace(home, rating=home.rating + movement)
+        updated[fixture.away_team] = replace(away, rating=away.rating - movement)
+    return updated
 
 
 def attack_from_rating(rating: float) -> float:
