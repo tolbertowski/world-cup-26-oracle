@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import csv
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
@@ -20,6 +20,7 @@ from world_cup_oracle.data.pipeline import (
     TEAM_SOURCE_COLUMNS,
     DataValidationReport,
     export_processed_data,
+    read_teams_csv,
     validate_tournament_data,
 )
 from world_cup_oracle.domain import Fixture, MatchResult, MatchStage, MethodOfWin, Team
@@ -109,6 +110,7 @@ def sync_fifa_calendar(
     updates_path = None
 
     if apply and report.ok:
+        teams = _preserve_fitted_seed_ratings(teams, processed_dir)
         processed = export_processed_data(teams, fixtures, processed_dir)
         processed_paths = (processed[0], processed[1])
         if update_results:
@@ -127,6 +129,22 @@ def sync_fifa_calendar(
         processed_paths=processed_paths,
         updates_path=updates_path,
     )
+
+
+def _preserve_fitted_seed_ratings(teams: list[Team], processed_dir: Path) -> list[Team]:
+    """Carry fitted seed ratings over a calendar re-sync.
+
+    The FIFA calendar knows nothing about ratings, so a matchday sync must not
+    reset `seed_rating` (fit by `fit-ratings`) back to the 1500 default.
+    """
+    teams_path = processed_dir / "teams.csv"
+    if not teams_path.exists():
+        return teams
+    existing = {team.code: team.seed_rating for team in read_teams_csv(teams_path)}
+    return [
+        replace(team, seed_rating=existing[team.code]) if team.code in existing else team
+        for team in teams
+    ]
 
 
 def write_official_raw_files(teams: list[Team], fixtures: list[Fixture], raw_dir: Path) -> tuple[Path, Path]:
