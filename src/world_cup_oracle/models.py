@@ -22,6 +22,12 @@ from world_cup_oracle.domain import (
 )
 
 
+DEFAULT_AVERAGE_TOTAL_GOALS = 2.62
+# Exponent for pulling each match's expected total toward the tournament
+# average: 1.0 pins every match to the average, 0.0 leaves totals unanchored.
+TOTAL_GOALS_ANCHORING = 0.45
+
+
 class EloRatingModel:
     def __init__(
         self,
@@ -74,7 +80,7 @@ class MatchPredictor:
         self,
         ratings: dict[str, TeamRating],
         *,
-        average_total_goals: float = 2.62,
+        average_total_goals: float = DEFAULT_AVERAGE_TOTAL_GOALS,
         max_scoreline_goals: int = 7,
     ) -> None:
         self.ratings = ratings
@@ -151,7 +157,11 @@ class MatchPredictor:
         base = self.average_total_goals / 2.0
         home_xg = base * exp(0.36 * rating_gap) * home.attack / max(0.45, away.defense)
         away_xg = base * exp(-0.36 * rating_gap) * away.attack / max(0.45, home.defense)
-        scale = self.average_total_goals / max(0.1, home_xg + away_xg)
+        # Damped anchor: pull the match total toward the tournament average
+        # without forcing it there, so mismatches can total more goals and
+        # cagey pairings fewer. TOTAL_GOALS_ANCHORING=1 would pin every match
+        # to the average (the old behavior); 0 would not anchor at all.
+        scale = (self.average_total_goals / max(0.1, home_xg + away_xg)) ** TOTAL_GOALS_ANCHORING
         return max(0.15, home_xg * scale), max(0.15, away_xg * scale)
 
     def _event_projections(
