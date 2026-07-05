@@ -70,6 +70,32 @@ def test_margin_of_victory_scales_movement() -> None:
     assert margin_of_victory_multiplier(4, 0) > margin_of_victory_multiplier(1, 0) == 1.0
 
 
+def test_margin_of_victory_is_capped() -> None:
+    fixtures = [_fixture()]
+    heavy = apply_results_to_ratings(
+        _two_team_ratings(1800.0, 1800.0), fixtures, {"M1": MatchResult("M1", 4, 0, locked=True)}
+    )
+    rout = apply_results_to_ratings(
+        _two_team_ratings(1800.0, 1800.0), fixtures, {"M1": MatchResult("M1", 7, 0, locked=True)}
+    )
+    # A 7-0 is no stronger rating evidence than a 4-0.
+    assert rout["AUS"].rating == heavy["AUS"].rating
+    assert margin_of_victory_multiplier(7, 0) == margin_of_victory_multiplier(4, 0) == 2.0
+
+
+def test_shootout_win_counts_as_draw_for_ratings() -> None:
+    fixtures = [_fixture()]
+    # Underdog AUS (lower-rated here) survives to penalties and wins the shootout.
+    shootout = {"M1": MatchResult("M1", 1, 1, home_penalties=5, away_penalties=4, locked=True)}
+    updated = apply_results_to_ratings(_two_team_ratings(1700.0, 1800.0), fixtures, shootout)
+    # Level after play is draw-strength evidence: the lower-rated side gains
+    # (a draw beats expectation) but far less than a regulation win would give.
+    regulation = apply_results_to_ratings(
+        _two_team_ratings(1700.0, 1800.0), fixtures, {"M1": MatchResult("M1", 2, 1, locked=True)}
+    )
+    assert 1700.0 < updated["AUS"].rating < regulation["AUS"].rating
+
+
 def test_apply_results_ignores_unlocked_and_unknown_fixtures() -> None:
     ratings = _two_team_ratings(1800.0, 1800.0)
     fixtures = [_fixture()]

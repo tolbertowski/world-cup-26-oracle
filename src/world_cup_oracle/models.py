@@ -182,9 +182,30 @@ class MatchPredictor:
         )
 
 
+MAX_RATED_GOAL_MARGIN = 4
+
+
 def margin_of_victory_multiplier(home_goals: int, away_goals: int) -> float:
-    """Diminishing Elo bonus for larger winning margins (1.0 for a one-goal game)."""
-    return sqrt(max(1, abs(home_goals - away_goals)))
+    """Diminishing Elo bonus for larger winning margins (1.0 for a one-goal game).
+
+    Capped at a four-goal margin so a rout cannot swing ratings without bound —
+    a 7-0 is treated as no stronger evidence than a 4-0.
+    """
+    margin = min(MAX_RATED_GOAL_MARGIN, max(1, abs(home_goals - away_goals)))
+    return sqrt(margin)
+
+
+def _rating_outcome(result: MatchResult) -> float:
+    """Match outcome used for rating updates: level after play is always 0.5.
+
+    Unlike standings, a penalty shootout says little about team strength, so a
+    knockout tie decided on penalties counts as a draw for rating purposes.
+    """
+    if result.home_goals > result.away_goals:
+        return 1.0
+    if result.home_goals < result.away_goals:
+        return 0.0
+    return 0.5
 
 
 def apply_results_to_ratings(
@@ -218,7 +239,7 @@ def apply_results_to_ratings(
         advantage = 0.0 if fixture.neutral_site else home_advantage
         expected_home = 1.0 / (1.0 + 10 ** ((away.rating - (home.rating + advantage)) / 400.0))
         movement = k_factor * margin_of_victory_multiplier(result.home_goals, result.away_goals) * (
-            _actual_home_score(result) - expected_home
+            _rating_outcome(result) - expected_home
         )
         updated[fixture.home_team] = replace(home, rating=home.rating + movement)
         updated[fixture.away_team] = replace(away, rating=away.rating - movement)
