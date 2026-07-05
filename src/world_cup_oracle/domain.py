@@ -43,6 +43,11 @@ class Fixture:
     kickoff: str | None = None
     venue: str | None = None
     neutral_site: bool = True
+    # Bracket provenance for knockout fixtures whose teams are not yet known:
+    # "W:<match_id>" (winner of), "RU:<match_id>" (loser of), or a seed label
+    # such as "1A", "2B", or "3ABCDF" (best third from those groups).
+    home_source: str | None = None
+    away_source: str | None = None
 
     @property
     def is_knockout(self) -> bool:

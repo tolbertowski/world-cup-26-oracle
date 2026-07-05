@@ -78,8 +78,18 @@ def write_fifa_cache(payload: dict, cache_dir: Path, *, season_id: str) -> Path:
 def parse_fifa_calendar(payload: dict) -> tuple[list[Team], list[Fixture], dict[str, MatchResult]]:
     matches = payload.get("Results", [])
     group_matches = [match for match in matches if _stage_from_match(match) == MatchStage.GROUP]
+    knockout_matches = sorted(
+        (match for match in matches if _stage_from_match(match) != MatchStage.GROUP),
+        key=lambda match: match.get("MatchNumber") or 0,
+    )
     teams = _teams_from_group_matches(group_matches)
+    number_to_id = {
+        match.get("MatchNumber"): str(match.get("IdMatch"))
+        for match in matches
+        if match.get("MatchNumber") and match.get("IdMatch")
+    }
     fixtures = [_fixture_from_match(match) for match in group_matches]
+    fixtures += [_knockout_fixture_from_match(match, number_to_id) for match in knockout_matches]
     completed_results = {
         result.match_id: result
         for result in (_result_from_match(match) for match in matches)
@@ -225,6 +235,39 @@ def _fixture_from_match(match: dict) -> Fixture:
         venue=venue,
         neutral_site=True,
     )
+
+
+def _knockout_fixture_from_match(match: dict, number_to_id: dict) -> Fixture:
+    """Knockout fixture with bracket provenance instead of placeholder team codes.
+
+    Future matches have no teams yet; PlaceHolderA/B carry either a seed label
+    ("1A", "2B", "3ABCDF") or a reference to an earlier match ("W89" = winner of
+    match number 89, "RU101" = loser of semi-final 101), which we translate to
+    the referenced match id.
+    """
+    base = _fixture_from_match(match)
+    home = match.get("Home") or {}
+    away = match.get("Away") or {}
+    return replace(
+        base,
+        home_team=home.get("Abbreviation") or home.get("IdCountry") or "",
+        away_team=away.get("Abbreviation") or away.get("IdCountry") or "",
+        home_source=_translate_placeholder(match.get("PlaceHolderA"), number_to_id),
+        away_source=_translate_placeholder(match.get("PlaceHolderB"), number_to_id),
+    )
+
+
+def _translate_placeholder(value: str | None, number_to_id: dict) -> str | None:
+    if not value:
+        return None
+    label = value.strip().upper()
+    if label.startswith("RU") and label[2:].isdigit():
+        referenced = number_to_id.get(int(label[2:]))
+        return f"RU:{referenced}" if referenced else label
+    if label.startswith("W") and label[1:].isdigit():
+        referenced = number_to_id.get(int(label[1:]))
+        return f"W:{referenced}" if referenced else label
+    return label  # seed labels such as 1A, 2B, 3ABCDF
 
 
 def _result_from_match(match: dict) -> MatchResult | None:

@@ -101,6 +101,16 @@ group stage is only partially locked, a simulated run whose bracket produces a
 different pairing simply does not match the locked result — real results are
 never applied to pairings that did not happen.
 
+The official FIFA sync goes further: it imports the knockout fixtures
+themselves, with real pairings for drawn or played rounds and bracket sources
+for future ones (`W:<match_id>` = winner of, `RU:<match_id>` = loser of, or a
+seed label like `1A`/`3ABCDF`). When those fixtures are present, the simulator
+and projected bracket walk the *official* tree — resolving each side from real
+teams, earlier winners, or group seeds — instead of reconstructing the bracket
+from standings, which can diverge from reality on tie-breaks (fair-play data is
+not in the public calendar) and third-place allocation. The template-based
+construction remains as the fallback for the offline demo dataset.
+
 ## Player Call-Up Layer
 
 Player call-ups do not replace team Elo. They generate bounded adjustments on

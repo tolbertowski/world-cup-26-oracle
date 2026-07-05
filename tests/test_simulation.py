@@ -98,6 +98,50 @@ def test_locked_knockout_result_overrides_simulation_by_team_pair() -> None:
     assert first.advance_prob == 1.0
 
 
+def _official_tree_fixtures() -> list:
+    """Group fixtures plus a synthetic official bracket: two semis, TP, final."""
+    from world_cup_oracle.domain import Fixture
+
+    return [
+        *build_demo_fixtures(),
+        # Real teams already known (like a played/drawn match in the calendar).
+        Fixture("KO1", MatchStage.SEMI_FINAL, home_team="BRA", away_team="MEX"),
+        # Teams TBD, resolved from group seeds.
+        Fixture("KO2", MatchStage.SEMI_FINAL, home_team="", away_team="", home_source="1A", away_source="1B"),
+        Fixture("KO3", MatchStage.THIRD_PLACE, home_team="", away_team="", home_source="RU:KO1", away_source="RU:KO2"),
+        Fixture("KO4", MatchStage.FINAL, home_team="", away_team="", home_source="W:KO1", away_source="W:KO2"),
+    ]
+
+
+def test_official_bracket_tree_resolves_sources_and_locked_results() -> None:
+    teams = build_demo_teams()
+    fixtures = _official_tree_fixtures()
+    predictor = MatchPredictor.from_teams(teams)
+    locked = _lock_all_group_results()
+    # Lock the first semi by official id: Brazil wins 2-0.
+    locked["KO1"] = MatchResult("KO1", 2, 0, method=MethodOfWin.REGULATION,
+                                stage=MatchStage.SEMI_FINAL, home_team="BRA", away_team="MEX")
+
+    simulator = TournamentSimulator(teams, fixtures, predictor, seed=3)
+    run = simulator.simulate_once(locked)
+
+    # The final's home side is the winner of KO1 via the W: reference.
+    assert run.finalists[0] == "BRA"
+    assert run.results["KO1"].home_goals == 2  # never re-simulated
+    assert "KO4" in run.results and "KO3" in run.results
+    # Third place pairs the two semi losers via RU: references.
+    third = run.results["KO3"]
+    assert third.match_id == "KO3"
+    assert run.champion in {"BRA", run.finalists[1]}
+
+    bracket = project_bracket(teams, fixtures, predictor, locked)
+    semis = dict((match.match_id, match) for _, matches in bracket.rounds for match in matches)
+    assert semis["KO1"].source == "locked"
+    assert semis["KO1"].projected_winner == "BRA"
+    assert bracket.champion in {"BRA", semis["KO4"].away_team}
+    assert bracket.third_place is not None
+
+
 def test_knockout_pool_ignores_results_without_provenance() -> None:
     plain = MatchResult(match_id="X1", home_goals=2, away_goals=0)
     group = MatchResult(
