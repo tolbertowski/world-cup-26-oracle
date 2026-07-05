@@ -26,6 +26,10 @@ DEFAULT_AVERAGE_TOTAL_GOALS = 2.62
 # Exponent for pulling each match's expected total toward the tournament
 # average: 1.0 pins every match to the average, 0.0 leaves totals unanchored.
 TOTAL_GOALS_ANCHORING = 0.45
+# Dixon-Coles low-score correlation: a fixed, transparent assumption at the
+# literature-standard value. Negative rho boosts 0-0/1-1 (draws) and trims
+# 1-0/0-1, correcting independent Poisson's known draw under-prediction.
+DEFAULT_DRAW_RHO = -0.10
 
 
 class EloRatingModel:
@@ -82,10 +86,12 @@ class MatchPredictor:
         *,
         average_total_goals: float = DEFAULT_AVERAGE_TOTAL_GOALS,
         max_scoreline_goals: int = 7,
+        draw_correlation: float = DEFAULT_DRAW_RHO,
     ) -> None:
         self.ratings = ratings
         self.average_total_goals = average_total_goals
         self.max_scoreline_goals = max_scoreline_goals
+        self.draw_correlation = draw_correlation
 
     @classmethod
     def from_teams(cls, teams: list[Team]) -> "MatchPredictor":
@@ -99,6 +105,7 @@ class MatchPredictor:
             home_xg,
             away_xg,
             max_goals=self.max_scoreline_goals,
+            rho=self.draw_correlation,
         )
         regulation_home = sum(prob for (home, away), prob in scorelines.items() if home > away)
         regulation_draw = sum(prob for (home, away), prob in scorelines.items() if home == away)
@@ -308,16 +315,40 @@ def scoreline_distribution(
     away_xg: float,
     *,
     max_goals: int = 7,
+    rho: float = DEFAULT_DRAW_RHO,
 ) -> dict[tuple[int, int], float]:
+    """Poisson scoreline grid with a Dixon-Coles low-score correction.
+
+    Independent Poisson under-predicts draws; the Dixon-Coles tau factor
+    reweights the four low-score cells (with negative ``rho`` boosting 0-0 and
+    1-1 while trimming 1-0 and 0-1) before normalization. ``rho=0`` reproduces
+    the plain independent-Poisson grid.
+    """
     probabilities: dict[tuple[int, int], float] = {}
     for home_goals in range(max_goals + 1):
         for away_goals in range(max_goals + 1):
-            probabilities[(home_goals, away_goals)] = _poisson_pmf(home_goals, home_xg) * _poisson_pmf(
+            probability = _poisson_pmf(home_goals, home_xg) * _poisson_pmf(away_goals, away_xg)
+            probabilities[(home_goals, away_goals)] = probability * _dixon_coles_tau(
+                home_goals,
                 away_goals,
+                home_xg,
                 away_xg,
+                rho,
             )
     total = sum(probabilities.values())
     return {score: probability / total for score, probability in probabilities.items()}
+
+
+def _dixon_coles_tau(home_goals: int, away_goals: int, home_xg: float, away_xg: float, rho: float) -> float:
+    if home_goals == 0 and away_goals == 0:
+        return max(0.0, 1.0 - home_xg * away_xg * rho)
+    if home_goals == 0 and away_goals == 1:
+        return max(0.0, 1.0 + home_xg * rho)
+    if home_goals == 1 and away_goals == 0:
+        return max(0.0, 1.0 + away_xg * rho)
+    if home_goals == 1 and away_goals == 1:
+        return max(0.0, 1.0 - rho)
+    return 1.0
 
 
 def _actual_home_score(result: MatchResult) -> float:

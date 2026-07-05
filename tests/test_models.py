@@ -96,6 +96,23 @@ def test_shootout_win_counts_as_draw_for_ratings() -> None:
     assert 1700.0 < updated["AUS"].rating < regulation["AUS"].rating
 
 
+def test_dixon_coles_boosts_draws_and_normalizes() -> None:
+    from world_cup_oracle.models import scoreline_distribution
+
+    plain = scoreline_distribution(1.3, 1.1, rho=0.0)
+    corrected = scoreline_distribution(1.3, 1.1)  # default negative rho
+
+    assert round(sum(plain.values()), 9) == 1.0
+    assert round(sum(corrected.values()), 9) == 1.0
+    draw_plain = sum(prob for (home, away), prob in plain.items() if home == away)
+    draw_corrected = sum(prob for (home, away), prob in corrected.items() if home == away)
+    assert draw_corrected > draw_plain
+    assert corrected[(0, 0)] > plain[(0, 0)]
+    assert corrected[(1, 0)] < plain[(1, 0)]
+    # High-score cells relatively unaffected pre-normalization; rho=0 is identity.
+    assert plain == scoreline_distribution(1.3, 1.1, rho=0.0)
+
+
 def test_expected_goals_total_varies_with_matchup() -> None:
     teams = build_demo_teams()
     predictor = MatchPredictor.from_teams(teams)

@@ -154,6 +154,28 @@ start (`--cutoff`, default 2026-06-11) before fitting. This means re-fitting
 against a freshly cached snapshot is always safe: played tournament games enter
 the model exactly once, through the lock file, never through `seed_rating`.
 
+## Final Stages Workflow
+
+As the tournament progresses, keep the model current with one command:
+
+```bash
+world-cup-oracle sync-fifa --apply
+```
+
+This merges every completed official result — group and knockout — into
+`data/manual/match_updates.csv`. Knockout rows carry `stage`, `home_team`, and
+`away_team` columns; those let the simulator, the projected bracket, and the
+rating updates match a played knockout game to its bracket slot by stage and
+team pair (the simulator's own knockout ids are generated, so match ids alone
+cannot identify them). Locking a knockout result by hand works the same way:
+fill in `stage` (e.g. `round_of_16`) and the two team codes.
+
+Locked results then do three things at load time: fix group standings, override
+knockout slots so played matches are never re-simulated, and move each side's
+Elo rating (margin-capped, shootouts as draws) so upsets propagate to every
+remaining round. No re-fit is needed — and `fit-ratings` ignores
+live-tournament matches entirely (see above).
+
 ## Official FIFA Shortcut
 
 For the 2026 World Cup, prefer:
