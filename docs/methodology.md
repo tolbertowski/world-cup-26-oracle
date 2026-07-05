@@ -30,8 +30,16 @@ strict 2026 requirements when requested. Processed files live in
 
 The baseline model uses an Elo-style rating interface. Ratings are transformed
 into attack and defense factors, then into expected goals. A Poisson scoreline
-grid converts expected goals into win, draw, loss, and likely scoreline
-probabilities.
+grid with a Dixon-Coles low-score correction (fixed rho = -0.10, a transparent
+literature-standard assumption) converts expected goals into win, draw, loss,
+and likely scoreline probabilities; the correction boosts 0-0 and 1-1 and trims
+1-0 and 0-1, fixing independent Poisson's known draw under-prediction.
+
+Each match's expected total is anchored softly to the fitted tournament
+average (`model_params.json`, derived from weighted historical results rather
+than a hardcoded constant): the total is pulled toward the average with a 0.45
+exponent instead of being pinned to it, so mismatches can produce more goals
+and cagey pairings fewer.
 
 Knockout draws are resolved into eventual win probabilities using rating edge,
 with method probabilities split between regulation, extra time, and penalties.
@@ -68,6 +76,30 @@ forward into the knockout rounds as a real strength change rather than only a
 group-table reshuffle. Updates use only real results — simulated games never feed
 back — and touch only the overall rating, leaving attack/defense/discipline/tempo
 as set by the base model and adjustments.
+
+Two guardrails keep single games from over-moving ratings: a tie decided on
+penalties counts as a draw (a shootout says little about team strength), and the
+margin-of-victory multiplier is capped at a four-goal margin, so a 7-0 moves
+ratings no more than a 4-0.
+
+## Final Stages: Locked Knockout Results
+
+The simulator generates its own knockout bracket ids, so real knockout results
+cannot be keyed by match id ahead of time. Instead, locked results carry
+optional provenance — stage plus home/away team codes (written automatically by
+the FIFA sync, or by hand in `match_updates.csv`) — and are matched to bracket
+slots by stage and the unordered team pair. Goals and penalties are re-oriented
+when the locked orientation differs from the constructed fixture.
+
+This makes locked knockout games authoritative in both the Monte Carlo
+simulation and the projected bracket: a played match is never re-simulated, and
+its winner feeds the next round. It also sidesteps third-place slotting
+approximations, since real pairings override constructed ones. Knockout results
+move Elo ratings too (applied in stage order after the group games), so a
+knockout upset changes the strength picture for every remaining round. If the
+group stage is only partially locked, a simulated run whose bracket produces a
+different pairing simply does not match the locked result — real results are
+never applied to pairings that did not happen.
 
 ## Player Call-Up Layer
 
