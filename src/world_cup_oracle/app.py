@@ -11,10 +11,11 @@ from world_cup_oracle.data import load_processed_or_demo
 from world_cup_oracle.data.io import (
     apply_team_adjustments,
     read_match_updates,
+    read_model_params,
     read_team_adjustments,
 )
 from world_cup_oracle.domain import Fixture, MatchPrediction, MatchStage, Team
-from world_cup_oracle.models import MatchPredictor, apply_results_to_ratings
+from world_cup_oracle.models import DEFAULT_AVERAGE_TOTAL_GOALS, MatchPredictor, apply_results_to_ratings
 from world_cup_oracle.simulation import project_bracket, run_monte_carlo
 
 
@@ -318,7 +319,7 @@ def _model_check(st, teams: list[Team], predictor: MatchPredictor) -> None:
         ]
     ).sort_values("Rating", ascending=False)
     col1, col2, col3 = st.columns(3)
-    col1.metric("Average total goals", "2.62")
+    col1.metric("Average total goals", f"{predictor.average_total_goals:.2f}")
     col2.metric("Scoreline grid", "0-7")
     col3.metric("Calibration", "Backtest-ready")
     st.dataframe(rating_rows, use_container_width=True, hide_index=True)
@@ -367,11 +368,15 @@ def _load_tournament_context() -> tuple[list[Team], list[Fixture], MatchPredicto
     tournament_data = load_processed_or_demo(ROOT / "data" / "processed")
     teams = tournament_data.teams
     fixtures = tournament_data.fixtures
-    predictor = MatchPredictor.from_teams(teams)
     adjustments = read_team_adjustments(ROOT / "data" / "manual" / "team_adjustments.csv")
-    predictor = MatchPredictor(apply_team_adjustments(predictor.ratings, adjustments))
     locked_results = read_match_updates(ROOT / "data" / "manual" / "match_updates.csv")
-    predictor = MatchPredictor(apply_results_to_ratings(predictor.ratings, fixtures, locked_results))
+    params = read_model_params(ROOT / "data" / "processed" / "model_params.json")
+    ratings = apply_team_adjustments(MatchPredictor.from_teams(teams).ratings, adjustments)
+    ratings = apply_results_to_ratings(ratings, fixtures, locked_results)
+    predictor = MatchPredictor(
+        ratings,
+        average_total_goals=params.get("average_total_goals", DEFAULT_AVERAGE_TOTAL_GOALS),
+    )
     return teams, fixtures, predictor, locked_results, tournament_data.source
 
 

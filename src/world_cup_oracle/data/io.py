@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import csv
+import json
 from pathlib import Path
 from urllib.request import urlopen
 
@@ -186,6 +187,24 @@ def upsert_generated_team_adjustments(
         writer.writeheader()
         writer.writerows(kept_rows)
         writer.writerows(_normalize_adjustment_row(row) for row in rows)
+
+
+def write_model_params(path: Path, params: dict) -> Path:
+    """Persist fitted model parameters (e.g. average total goals) as JSON."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(params, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    return path
+
+
+def read_model_params(path: Path) -> dict:
+    """Fitted model parameters, or {} when no fit has been run yet."""
+    if not path.exists():
+        return {}
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    return payload if isinstance(payload, dict) else {}
 
 
 def cache_url(url: str, cache_dir: Path, name: str | None = None) -> Path:

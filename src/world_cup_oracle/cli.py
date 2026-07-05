@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+from datetime import date
 from pathlib import Path
 
 from world_cup_oracle.data import build_demo_fixtures, build_demo_teams, load_processed_or_demo
@@ -11,9 +12,11 @@ from world_cup_oracle.data.io import (
     apply_team_adjustments,
     cache_url,
     read_match_updates,
+    read_model_params,
     read_team_adjustments,
     upsert_generated_team_adjustments,
     write_manual_templates,
+    write_model_params,
 )
 from world_cup_oracle.data.pipeline import (
     import_tournament_snapshot,
@@ -27,6 +30,8 @@ from world_cup_oracle.data.pipeline import (
 from world_cup_oracle.data.historical import (
     DEFAULT_HALF_LIFE_DAYS,
     RESULTS_URL,
+    WORLD_CUP_2026_START,
+    fit_average_goals,
     fit_team_ratings,
     read_results,
 )
@@ -39,11 +44,12 @@ from world_cup_oracle.data.player_callups import (
     build_player_callup_adjustments,
     read_player_callups,
 )
-from world_cup_oracle.models import MatchPredictor, apply_results_to_ratings
+from world_cup_oracle.models import DEFAULT_AVERAGE_TOTAL_GOALS, MatchPredictor, apply_results_to_ratings
 from world_cup_oracle.simulation import project_bracket, run_monte_carlo
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
+MODEL_PARAMS_PATH = PROJECT_ROOT / "data" / "processed" / "model_params.json"
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -93,6 +99,12 @@ def build_parser() -> argparse.ArgumentParser:
     fit_ratings.add_argument("--teams", type=Path, default=PROJECT_ROOT / "data" / "processed" / "teams.csv")
     fit_ratings.add_argument("--output", type=Path, default=PROJECT_ROOT / "data" / "manual" / "team_adjustments.csv")
     fit_ratings.add_argument("--half-life-days", type=float, default=DEFAULT_HALF_LIFE_DAYS)
+    fit_ratings.add_argument(
+        "--cutoff",
+        type=date.fromisoformat,
+        default=WORLD_CUP_2026_START,
+        help="Drop matches on/after this date so live-tournament games are never double-counted.",
+    )
     fit_ratings.add_argument(
         "--no-seed-rating",
         action="store_true",
@@ -207,17 +219,27 @@ def main(argv: list[str] | None = None) -> int:
         if not args.teams.exists():
             print(f"No teams file at {args.teams}; run init-data or sync-fifa first.")
             return 1
-        records = read_results(args.results)
+        records = [record for record in read_results(args.results) if record.match_date < args.cutoff]
         teams = read_teams_csv(args.teams)
         fitted, unmatched = fit_team_ratings(records, teams, half_life_days=args.half_life_days)
         if not fitted:
             print("No teams could be matched to the results dataset.")
             return 1
         rows = [item.as_adjustment_row(note_prefix=GENERATED_RATINGS_PREFIX) for item in fitted]
+        average_goals = fit_average_goals(records, half_life_days=args.half_life_days)
         if not args.dry_run:
             upsert_generated_team_adjustments(args.output, rows)
             if not args.no_seed_rating:
                 update_seed_ratings(args.teams, {item.team_code: item.elo for item in fitted})
+            params_path = write_model_params(
+                MODEL_PARAMS_PATH,
+                {
+                    "average_total_goals": round(average_goals, 3),
+                    "fitted_at": date.today().isoformat(),
+                    "source": "international_results",
+                },
+            )
+        print(f"average_total_goals={average_goals:.3f}")
         print("team_code,elo,attack,defense,attack_delta,defense_delta,matches")
         for item in sorted(fitted, key=lambda value: value.elo, reverse=True):
             print(
@@ -233,6 +255,7 @@ def main(argv: list[str] | None = None) -> int:
             print(f"unmatched={','.join(unmatched)}")
         if not args.dry_run:
             print(f"updated={args.output}")
+            print(f"model_params={params_path}")
             if not args.no_seed_rating:
                 print(f"seed_rating_updated={args.teams}")
         return 0
@@ -263,10 +286,14 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "project-bracket":
         tournament = load_processed_or_demo(PROJECT_ROOT / "data" / "processed")
         adjustments = read_team_adjustments(PROJECT_ROOT / "data" / "manual" / "team_adjustments.csv")
-        predictor = MatchPredictor.from_teams(tournament.teams)
-        predictor = MatchPredictor(apply_team_adjustments(predictor.ratings, adjustments))
         locked = read_match_updates(PROJECT_ROOT / "data" / "manual" / "match_updates.csv")
-        predictor = MatchPredictor(apply_results_to_ratings(predictor.ratings, tournament.fixtures, locked))
+        params = read_model_params(MODEL_PARAMS_PATH)
+        ratings = apply_team_adjustments(MatchPredictor.from_teams(tournament.teams).ratings, adjustments)
+        ratings = apply_results_to_ratings(ratings, tournament.fixtures, locked)
+        predictor = MatchPredictor(
+            ratings,
+            average_total_goals=params.get("average_total_goals", DEFAULT_AVERAGE_TOTAL_GOALS),
+        )
         bracket = project_bracket(tournament.teams, tournament.fixtures, predictor, locked)
         names = {team.code: team.name for team in tournament.teams}
         for stage, matches in bracket.rounds:

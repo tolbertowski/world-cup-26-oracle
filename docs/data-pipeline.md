@@ -147,13 +147,12 @@ manual and `player_callups:` rows intact. The dataset is goals-only, so the fit
 does not touch cards, corners, discipline, or tempo. Use `--no-seed-rating` to
 write only the attack/defense deltas, or `--half-life-days` to tune recency.
 
-**Do not re-fit against a snapshot that contains the live tournament.** Once
-World Cup 2026 matches are locked in `data/manual/match_updates.csv`, those
-results already move ratings in-tournament. Re-running `fit-ratings` against a
-freshly cached dataset that includes the same matches would bake them into
-`seed_rating` *and* replay them again from the lock file — double-counting every
-played game. Keep the cached snapshot frozen at its pre-tournament state until
-the tournament ends.
+**Live-tournament matches are excluded from the fit automatically.** World Cup
+2026 results locked in `data/manual/match_updates.csv` already move ratings
+in-tournament, so `fit-ratings` drops all matches on or after the tournament
+start (`--cutoff`, default 2026-06-11) before fitting. This means re-fitting
+against a freshly cached snapshot is always safe: played tournament games enter
+the model exactly once, through the lock file, never through `seed_rating`.
 
 ## Official FIFA Shortcut
 

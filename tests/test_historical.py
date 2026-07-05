@@ -6,6 +6,7 @@ from pathlib import Path
 from world_cup_oracle.data.historical import (
     competition_weight,
     fit_attack_defense,
+    fit_average_goals,
     fit_elo,
     fit_team_ratings,
     read_results,
@@ -79,6 +80,20 @@ def test_fit_attack_defense_separates_styles(tmp_path: Path) -> None:
     strengths = fit_attack_defense(records)
     assert strengths["Striker"][0] > strengths["Average"][0]  # attack
     assert strengths["Wall"][1] > strengths["Striker"][1]  # defense (higher = better)
+
+
+def test_fit_average_goals_weights_recent_matches(tmp_path: Path) -> None:
+    rows = [
+        # Old low-scoring era vs recent higher-scoring matches.
+        "2000-01-01,Alpha,Bravo,0,0,FIFA World Cup,C,X,TRUE",
+        "2025-01-01,Alpha,Bravo,2,1,FIFA World Cup,C,X,TRUE",
+        "2025-02-01,Bravo,Alpha,1,2,FIFA World Cup,C,X,TRUE",
+    ]
+    records = read_results(_write_results(tmp_path / "results.csv", rows))
+    average = fit_average_goals(records)
+    # Recency weighting pulls the mean toward the recent 3-goal matches.
+    assert 2.5 < average <= 3.0
+    assert fit_average_goals([]) == 2.62  # safe fallback
 
 
 def test_source_name_for_uses_aliases() -> None:

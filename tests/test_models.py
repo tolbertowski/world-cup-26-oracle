@@ -96,6 +96,17 @@ def test_shootout_win_counts_as_draw_for_ratings() -> None:
     assert 1700.0 < updated["AUS"].rating < regulation["AUS"].rating
 
 
+def test_expected_goals_total_varies_with_matchup() -> None:
+    teams = build_demo_teams()
+    predictor = MatchPredictor.from_teams(teams)
+    mismatch = predictor.predict(Fixture("T1", MatchStage.GROUP, "BRA", "HAI", group="C"))
+    # Two mid-rated sides from the demo data for an even pairing.
+    even = predictor.predict(Fixture("T2", MatchStage.GROUP, "KOR", "CZE", group="A"))
+    # Totals are anchored, not pinned: a mismatch should out-total an even tie.
+    assert mismatch.total_goals > even.total_goals
+    assert abs(even.total_goals - predictor.average_total_goals) < 0.75
+
+
 def test_knockout_result_with_embedded_teams_moves_ratings() -> None:
     from world_cup_oracle.domain import MatchStage
 
