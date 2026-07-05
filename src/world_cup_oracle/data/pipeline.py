@@ -32,7 +32,11 @@ FIXTURE_SOURCE_COLUMNS = [
     "kickoff",
     "venue",
     "neutral_site",
+    "home_source",
+    "away_source",
 ]
+# Older snapshots predate the bracket-source columns; only these are mandatory.
+REQUIRED_FIXTURE_COLUMNS = FIXTURE_SOURCE_COLUMNS[:8]
 
 
 @dataclass(frozen=True, slots=True)
@@ -79,7 +83,7 @@ def read_teams_csv(path: Path) -> list[Team]:
 def read_fixtures_csv(path: Path) -> list[Fixture]:
     with path.open(newline="", encoding="utf-8") as handle:
         reader = csv.DictReader(handle)
-        _require_columns(path, reader.fieldnames, FIXTURE_SOURCE_COLUMNS)
+        _require_columns(path, reader.fieldnames, REQUIRED_FIXTURE_COLUMNS)
         return [_fixture_from_row(row) for row in reader if row.get("match_id")]
 
 
@@ -147,6 +151,8 @@ def export_processed_data(teams: list[Team], fixtures: list[Fixture], processed_
                     "kickoff": fixture.kickoff or "",
                     "venue": fixture.venue or "",
                     "neutral_site": str(fixture.neutral_site).lower(),
+                    "home_source": fixture.home_source or "",
+                    "away_source": fixture.away_source or "",
                 }
             )
     return [teams_path, fixtures_path]
@@ -209,11 +215,19 @@ def validate_tournament_data(
         errors.append("Match IDs must be unique.")
 
     for fixture in fixtures:
-        if fixture.home_team not in unique_codes:
-            errors.append(f"{fixture.match_id} references unknown home team {fixture.home_team}.")
-        if fixture.away_team not in unique_codes:
-            errors.append(f"{fixture.match_id} references unknown away team {fixture.away_team}.")
-        if fixture.home_team == fixture.away_team:
+        # Knockout fixtures may have TBD teams as long as a bracket source says
+        # where each side will come from (e.g. "W:<match_id>" or a seed label).
+        if fixture.home_team:
+            if fixture.home_team not in unique_codes:
+                errors.append(f"{fixture.match_id} references unknown home team {fixture.home_team}.")
+        elif not (fixture.is_knockout and fixture.home_source):
+            errors.append(f"{fixture.match_id} has no home team and no bracket source.")
+        if fixture.away_team:
+            if fixture.away_team not in unique_codes:
+                errors.append(f"{fixture.match_id} references unknown away team {fixture.away_team}.")
+        elif not (fixture.is_knockout and fixture.away_source):
+            errors.append(f"{fixture.match_id} has no away team and no bracket source.")
+        if fixture.home_team and fixture.home_team == fixture.away_team:
             errors.append(f"{fixture.match_id} uses the same home and away team.")
         if fixture.stage == MatchStage.GROUP and not fixture.group:
             errors.append(f"{fixture.match_id} is a group fixture but has no group.")
@@ -251,6 +265,8 @@ def _fixture_from_row(row: dict[str, str]) -> Fixture:
         kickoff=_optional_text(row.get("kickoff")),
         venue=_optional_text(row.get("venue")),
         neutral_site=_optional_bool(row.get("neutral_site"), default=True),
+        home_source=_optional_text(row.get("home_source")),
+        away_source=_optional_text(row.get("away_source")),
     )
 
 

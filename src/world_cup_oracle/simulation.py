@@ -37,6 +37,70 @@ class SimulationRun:
 
 KnockoutResultPool = dict[tuple[MatchStage, frozenset[str]], MatchResult]
 
+# Order in which knockout rounds are resolved. The third-place playoff draws on
+# semi-final losers, so it precedes the final in compute order.
+KNOCKOUT_STAGE_SEQUENCE = (
+    MatchStage.ROUND_OF_32,
+    MatchStage.ROUND_OF_16,
+    MatchStage.QUARTER_FINAL,
+    MatchStage.SEMI_FINAL,
+    MatchStage.THIRD_PLACE,
+    MatchStage.FINAL,
+)
+
+
+def official_knockout_fixtures(fixtures: list[Fixture]) -> dict[MatchStage, list[Fixture]]:
+    """Knockout fixtures grouped by stage, in calendar order.
+
+    When the official calendar supplies the knockout bracket (real pairings for
+    played rounds, ``W:<match_id>``/``RU:<match_id>``/seed sources for future
+    ones), the tournament tree comes from here instead of being reconstructed
+    from group standings — which can diverge from reality on tie-breaks and
+    third-place allocation.
+    """
+    by_stage: dict[MatchStage, list[Fixture]] = defaultdict(list)
+    for fixture in fixtures:
+        if fixture.stage != MatchStage.GROUP:
+            by_stage[fixture.stage].append(fixture)
+    return dict(by_stage)
+
+
+def _resolve_bracket_side(
+    team: str,
+    source: str | None,
+    *,
+    seeds: dict[str, str],
+    thirds: dict[str, str],
+    used_thirds: set[str],
+    outcomes: dict[str, tuple[str, str]],
+    match_id: str,
+) -> str:
+    """Team code for one side of a knockout fixture.
+
+    Real team codes (already-played or already-drawn matches) win outright;
+    otherwise the bracket source is followed: winner/loser of an earlier match,
+    a direct seed label, or a best-third label resolved greedily.
+    """
+    if team:
+        return team
+    if not source:
+        raise ValueError(f"Knockout fixture {match_id} has no team and no bracket source.")
+    if source.startswith("W:"):
+        return outcomes[source[len("W:"):]][0]
+    if source.startswith("RU:"):
+        return outcomes[source[len("RU:"):]][1]
+    if source.startswith("3"):
+        for group in source[1:]:
+            if group in thirds and group not in used_thirds:
+                used_thirds.add(group)
+                return thirds[group]
+        for group in sorted(thirds):
+            if group not in used_thirds:
+                used_thirds.add(group)
+                return thirds[group]
+        raise KeyError(f"No available third-place qualifier for {match_id} ({source}).")
+    return seeds[source]
+
 
 def build_knockout_result_pool(locked_results: dict[str, MatchResult]) -> KnockoutResultPool:
     """Index locked knockout results by (stage, team pair).
@@ -116,9 +180,27 @@ class TournamentSimulator:
             group: rows[0].team_code for group, rows in group_stage.standings.items() if rows
         }
         knockout_teams = {qualified.team_code for qualified in group_stage.qualified}
-        round_of_32 = build_round_of_32(group_stage.qualified)
-
         upset_labels: list[str] = []
+
+        official = official_knockout_fixtures(self.fixtures)
+        if official:
+            champion, finalists, r32_participants = self._simulate_official_knockouts(
+                official,
+                group_stage,
+                results,
+                knockout_pool,
+                upset_labels,
+            )
+            return SimulationRun(
+                champion=champion,
+                finalists=finalists,
+                group_winners=group_winners,
+                knockout_teams=r32_participants or knockout_teams,
+                upset_labels=upset_labels,
+                results=results,
+            )
+
+        round_of_32 = build_round_of_32(group_stage.qualified)
         r32_winners, r32_losers = self._simulate_knockout_round(round_of_32, results, upset_labels, knockout_pool)
         r16_winners, r16_losers = self._simulate_knockout_round(
             build_next_round_fixtures(r32_winners, MatchStage.ROUND_OF_16, "R16"),
@@ -173,6 +255,74 @@ class TournamentSimulator:
     ) -> SimulationSummary:
         runs = [self.simulate_once(locked_results) for _ in range(simulations)]
         return summarize_runs(runs, simulations)
+
+    def _simulate_official_knockouts(
+        self,
+        official: dict[MatchStage, list[Fixture]],
+        group_stage,
+        results: dict[str, MatchResult],
+        knockout_pool: KnockoutResultPool,
+        upset_labels: list[str],
+    ) -> tuple[str, tuple[str, str], set[str]]:
+        """Walk the official bracket tree, using real results where they exist.
+
+        Returns (champion, final pairing, round-of-32 participants).
+        """
+        seeds = {qualified.seed_label: qualified.team_code for qualified in group_stage.qualified}
+        thirds = {qualified.group: qualified.team_code for qualified in group_stage.qualified if qualified.rank == 3}
+        used_thirds: set[str] = set()
+        outcomes: dict[str, tuple[str, str]] = {}
+        r32_participants: set[str] = set()
+        champion = ""
+        finalists = ("", "")
+
+        for stage in KNOCKOUT_STAGE_SEQUENCE:
+            for fixture in official.get(stage, []):
+                home = _resolve_bracket_side(
+                    fixture.home_team,
+                    fixture.home_source,
+                    seeds=seeds,
+                    thirds=thirds,
+                    used_thirds=used_thirds,
+                    outcomes=outcomes,
+                    match_id=fixture.match_id,
+                )
+                away = _resolve_bracket_side(
+                    fixture.away_team,
+                    fixture.away_source,
+                    seeds=seeds,
+                    thirds=thirds,
+                    used_thirds=used_thirds,
+                    outcomes=outcomes,
+                    match_id=fixture.match_id,
+                )
+                result = results.get(fixture.match_id)
+                if result is not None and result.team_pair is not None and result.team_pair != frozenset((home, away)):
+                    # A real result outranks any resolution approximation.
+                    home, away = result.home_team, result.away_team
+                resolved = replace(fixture, home_team=home, away_team=away)
+                if stage == MatchStage.ROUND_OF_32:
+                    r32_participants.update((home, away))
+                if result is not None and result.home_team not in (None, home):
+                    result = _orient_result_to_fixture(resolved, result)
+                    results[resolved.match_id] = result
+                if result is None:
+                    result = lookup_knockout_result(knockout_pool, resolved)
+                    if result is None:
+                        result = self._simulate_knockout_match(resolved)
+                    results[resolved.match_id] = result
+                winner_side = result.winner_side
+                if winner_side is None:
+                    raise ValueError(f"Knockout result {resolved.match_id} has no winner.")
+                winner = home if winner_side == "home" else away
+                loser = away if winner_side == "home" else home
+                outcomes[resolved.match_id] = (winner, loser)
+                if self._is_upset(winner, loser):
+                    upset_labels.append(f"{winner} over {loser}")
+                if stage == MatchStage.FINAL:
+                    champion = winner
+                    finalists = (home, away)
+        return champion, finalists, r32_participants
 
     def _simulate_group_match(self, fixture: Fixture) -> MatchResult:
         prediction = self.predictor.predict(fixture)
@@ -299,6 +449,11 @@ def project_bracket(
         )
 
     group_stage = calculate_group_stage(teams, group_fixtures, results)
+
+    official = official_knockout_fixtures(fixtures)
+    if official:
+        return _project_official_bracket(official, group_stage, predictor, locked_results, knockout_pool)
+
     rounds: list[tuple[MatchStage, list[BracketMatch]]] = []
 
     def project_round(round_fixtures: list[Fixture]) -> tuple[list[BracketMatch], list[str], list[str]]:
@@ -368,6 +523,93 @@ def project_bracket(
         third_place = tp_winners[0]
 
     return BracketProjection(rounds=rounds, champion=final_winners[0], third_place=third_place)
+
+
+def _project_official_bracket(
+    official: dict[MatchStage, list[Fixture]],
+    group_stage,
+    predictor: MatchPredictor,
+    locked_results: dict[str, MatchResult],
+    knockout_pool: KnockoutResultPool,
+) -> BracketProjection:
+    """Deterministic projection over the official bracket tree."""
+    seeds = {qualified.seed_label: qualified.team_code for qualified in group_stage.qualified}
+    thirds = {qualified.group: qualified.team_code for qualified in group_stage.qualified if qualified.rank == 3}
+    used_thirds: set[str] = set()
+    outcomes: dict[str, tuple[str, str]] = {}
+    by_stage: dict[MatchStage, list[BracketMatch]] = {}
+    champion = ""
+    third_place: str | None = None
+
+    for stage in KNOCKOUT_STAGE_SEQUENCE:
+        matches: list[BracketMatch] = []
+        for fixture in official.get(stage, []):
+            home = _resolve_bracket_side(
+                fixture.home_team,
+                fixture.home_source,
+                seeds=seeds,
+                thirds=thirds,
+                used_thirds=used_thirds,
+                outcomes=outcomes,
+                match_id=fixture.match_id,
+            )
+            away = _resolve_bracket_side(
+                fixture.away_team,
+                fixture.away_source,
+                seeds=seeds,
+                thirds=thirds,
+                used_thirds=used_thirds,
+                outcomes=outcomes,
+                match_id=fixture.match_id,
+            )
+            locked = locked_results.get(fixture.match_id)
+            if locked is not None and locked.team_pair is not None and locked.team_pair != frozenset((home, away)):
+                # A real result outranks any resolution approximation.
+                home, away = locked.home_team, locked.away_team
+            resolved = replace(fixture, home_team=home, away_team=away)
+            if locked is None:
+                locked = lookup_knockout_result(knockout_pool, resolved)
+            if locked is not None and locked.winner_side is not None:
+                winner_team = locked.winner_team
+                home_advances = winner_team == home if winner_team is not None else locked.winner_side == "home"
+                advance_prob = 1.0
+                source = "locked"
+            else:
+                share = knockout_advance_share(predictor.predict(resolved))
+                home_advances = share >= 0.5
+                advance_prob = share if home_advances else 1.0 - share
+                source = "expected"
+            winner = home if home_advances else away
+            loser = away if home_advances else home
+            outcomes[resolved.match_id] = (winner, loser)
+            matches.append(
+                BracketMatch(
+                    stage=stage,
+                    match_id=resolved.match_id,
+                    home_team=home,
+                    away_team=away,
+                    projected_winner=winner,
+                    advance_prob=advance_prob,
+                    source=source,
+                )
+            )
+            if stage == MatchStage.FINAL:
+                champion = winner
+            if stage == MatchStage.THIRD_PLACE:
+                third_place = winner
+        if matches:
+            by_stage[stage] = matches
+
+    display_order = [
+        MatchStage.ROUND_OF_32,
+        MatchStage.ROUND_OF_16,
+        MatchStage.QUARTER_FINAL,
+        MatchStage.SEMI_FINAL,
+        MatchStage.FINAL,
+        MatchStage.THIRD_PLACE,
+    ]
+    rounds = [(stage, by_stage[stage]) for stage in display_order if stage in by_stage]
+    return BracketProjection(rounds=rounds, champion=champion, third_place=third_place)
 
 
 def _modal_scoreline(prediction: MatchPrediction) -> tuple[int, int]:
