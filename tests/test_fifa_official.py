@@ -41,6 +41,30 @@ def test_sync_fifa_calendar_apply_writes_processed_and_updates(tmp_path: Path) -
     assert "400021443" in (tmp_path / "manual" / "match_updates.csv").read_text(encoding="utf-8")
 
 
+def test_sync_preserves_fitted_seed_ratings(tmp_path: Path) -> None:
+    source = tmp_path / "fifa.json"
+    source.write_text(json.dumps(_fixture_payload(full_group=True)), encoding="utf-8")
+    kwargs = dict(
+        raw_dir=tmp_path / "raw",
+        cache_dir=tmp_path / "cache",
+        processed_dir=tmp_path / "processed",
+        manual_dir=tmp_path / "manual",
+        source_json=source,
+        apply=True,
+        strict=False,
+    )
+    sync_fifa_calendar(**kwargs)
+
+    # Simulate a fit: give one team a real rating, then re-sync.
+    teams_path = tmp_path / "processed" / "teams.csv"
+    fitted = teams_path.read_text(encoding="utf-8").replace(",1500.0", ",1897.5", 1)
+    teams_path.write_text(fitted, encoding="utf-8")
+
+    sync_fifa_calendar(**kwargs)
+
+    assert ",1897.5" in teams_path.read_text(encoding="utf-8")
+
+
 def test_release_check_blocks_demo_data(tmp_path: Path) -> None:
     report = release_check(tmp_path / "processed")
 
