@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections import Counter, defaultdict
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from random import Random
 
 from world_cup_oracle.domain import (
@@ -35,6 +35,57 @@ class SimulationRun:
     results: dict[str, MatchResult] = field(default_factory=dict)
 
 
+KnockoutResultPool = dict[tuple[MatchStage, frozenset[str]], MatchResult]
+
+
+def build_knockout_result_pool(locked_results: dict[str, MatchResult]) -> KnockoutResultPool:
+    """Index locked knockout results by (stage, team pair).
+
+    The simulator generates its own knockout match ids (R32-01, QF-02, ...), so
+    real knockout results — locked under official match ids — are matched to
+    bracket slots by stage and the unordered pair of team codes instead. Results
+    without stage/team provenance simply are not indexed, which also guards
+    against applying a real result to a simulated pairing that never happened.
+    """
+    pool: KnockoutResultPool = {}
+    for result in locked_results.values():
+        pair = result.team_pair
+        if not result.locked or pair is None or result.stage in (None, MatchStage.GROUP):
+            continue
+        pool[(result.stage, pair)] = result
+    return pool
+
+
+def lookup_knockout_result(pool: KnockoutResultPool, fixture: Fixture) -> MatchResult | None:
+    """Locked result for this fixture's stage and team pair, oriented to the fixture."""
+    result = pool.get((fixture.stage, frozenset((fixture.home_team, fixture.away_team))))
+    if result is None:
+        return None
+    return _orient_result_to_fixture(fixture, result)
+
+
+def _orient_result_to_fixture(fixture: Fixture, result: MatchResult) -> MatchResult:
+    """Re-key a locked result to the fixture, flipping sides if needed."""
+    if result.home_team == fixture.home_team:
+        return replace(result, match_id=fixture.match_id)
+    return replace(
+        result,
+        match_id=fixture.match_id,
+        home_goals=result.away_goals,
+        away_goals=result.home_goals,
+        home_penalties=result.away_penalties,
+        away_penalties=result.home_penalties,
+        home_yellow_cards=result.away_yellow_cards,
+        away_yellow_cards=result.home_yellow_cards,
+        home_red_cards=result.away_red_cards,
+        away_red_cards=result.home_red_cards,
+        home_corners=result.away_corners,
+        away_corners=result.home_corners,
+        home_team=result.away_team,
+        away_team=result.home_team,
+    )
+
+
 class TournamentSimulator:
     def __init__(
         self,
@@ -52,6 +103,7 @@ class TournamentSimulator:
     def simulate_once(self, locked_results: dict[str, MatchResult] | None = None) -> SimulationRun:
         locked_results = locked_results or {}
         results = dict(locked_results)
+        knockout_pool = build_knockout_result_pool(locked_results)
         group_fixtures = [fixture for fixture in self.fixtures if fixture.stage == MatchStage.GROUP]
 
         for fixture in group_fixtures:
@@ -67,21 +119,24 @@ class TournamentSimulator:
         round_of_32 = build_round_of_32(group_stage.qualified)
 
         upset_labels: list[str] = []
-        r32_winners, r32_losers = self._simulate_knockout_round(round_of_32, results, upset_labels)
+        r32_winners, r32_losers = self._simulate_knockout_round(round_of_32, results, upset_labels, knockout_pool)
         r16_winners, r16_losers = self._simulate_knockout_round(
             build_next_round_fixtures(r32_winners, MatchStage.ROUND_OF_16, "R16"),
             results,
             upset_labels,
+            knockout_pool,
         )
         qf_winners, qf_losers = self._simulate_knockout_round(
             build_next_round_fixtures(r16_winners, MatchStage.QUARTER_FINAL, "QF"),
             results,
             upset_labels,
+            knockout_pool,
         )
         sf_winners, sf_losers = self._simulate_knockout_round(
             build_next_round_fixtures(qf_winners, MatchStage.SEMI_FINAL, "SF"),
             results,
             upset_labels,
+            knockout_pool,
         )
         final_fixture = build_next_round_fixtures(sf_winners, MatchStage.FINAL, "F")[0]
         finalists = (final_fixture.home_team, final_fixture.away_team)
@@ -89,6 +144,7 @@ class TournamentSimulator:
             [final_fixture],
             results,
             upset_labels,
+            knockout_pool,
         )
 
         third_place_fixture = Fixture(
@@ -97,7 +153,7 @@ class TournamentSimulator:
             home_team=sf_losers[0],
             away_team=sf_losers[1],
         )
-        self._simulate_knockout_round([third_place_fixture], results, upset_labels)
+        self._simulate_knockout_round([third_place_fixture], results, upset_labels, knockout_pool)
 
         champion = final_winners[0]
         finalists = tuple(sorted((champion, final_losers[0])))  # stable aggregate key ordering
@@ -138,17 +194,19 @@ class TournamentSimulator:
         fixtures: list[Fixture],
         results: dict[str, MatchResult],
         upset_labels: list[str],
+        knockout_pool: KnockoutResultPool,
     ) -> tuple[list[str], list[str]]:
         winners: list[str] = []
         losers: list[str] = []
         for fixture in fixtures:
             if fixture.match_id in results:
                 result = results[fixture.match_id]
-                winner_side = result.winner_side
             else:
-                result = self._simulate_knockout_match(fixture)
+                result = lookup_knockout_result(knockout_pool, fixture)
+                if result is None:
+                    result = self._simulate_knockout_match(fixture)
                 results[fixture.match_id] = result
-                winner_side = result.winner_side
+            winner_side = result.winner_side
             if winner_side is None:
                 raise ValueError(f"Knockout result {fixture.match_id} has no winner.")
             winner = fixture.home_team if winner_side == "home" else fixture.away_team
@@ -222,6 +280,7 @@ def project_bracket(
     Monte Carlo path so the structure stays consistent.
     """
     locked_results = locked_results or {}
+    knockout_pool = build_knockout_result_pool(locked_results)
     group_fixtures = [fixture for fixture in fixtures if fixture.stage == MatchStage.GROUP]
 
     results: dict[str, MatchResult] = {}
@@ -248,6 +307,8 @@ def project_bracket(
         losers: list[str] = []
         for fixture in round_fixtures:
             locked = locked_results.get(fixture.match_id)
+            if locked is None:
+                locked = lookup_knockout_result(knockout_pool, fixture)
             if locked is not None and locked.winner_side is not None:
                 home_advances = locked.winner_side == "home"
                 advance_prob = 1.0

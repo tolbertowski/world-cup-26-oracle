@@ -65,6 +65,28 @@ class MatchResult:
     method: MethodOfWin | None = None
     locked: bool = True
     notes: str | None = None
+    # Optional provenance for knockout results: the simulator generates its own
+    # bracket match ids, so a locked knockout result is matched to its bracket
+    # slot by stage + team pair rather than by match_id.
+    stage: MatchStage | None = None
+    home_team: str | None = None
+    away_team: str | None = None
+
+    @property
+    def team_pair(self) -> frozenset[str] | None:
+        if self.home_team is None or self.away_team is None:
+            return None
+        return frozenset((self.home_team, self.away_team))
+
+    @property
+    def winner_team(self) -> str | None:
+        """Winning team code, when team codes are attached to the result."""
+        side = self.winner_side
+        if side == "home":
+            return self.home_team
+        if side == "away":
+            return self.away_team
+        return None
 
     @property
     def is_draw_after_play(self) -> bool:
