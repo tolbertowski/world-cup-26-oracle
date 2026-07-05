@@ -1,73 +1,105 @@
-match_id,stage,home_team,away_team,group,kickoff,venue,neutral_site
-400021443,group,MEX,RSA,A,2026-06-11T19:00:00Z,Mexico City Stadium (Mexico City),true
-400021441,group,KOR,CZE,A,2026-06-12T02:00:00Z,Guadalajara Stadium (Guadalajara),true
-400021449,group,CAN,BIH,B,2026-06-12T19:00:00Z,Toronto Stadium (Toronto),true
-400021458,group,USA,PAR,D,2026-06-13T01:00:00Z,Los Angeles Stadium (Los Angeles),true
-400021447,group,QAT,SUI,B,2026-06-13T19:00:00Z,San Francisco Bay Area Stadium (San Francisco Bay Area),true
-400021456,group,BRA,MAR,C,2026-06-13T22:00:00Z,New York/New Jersey Stadium (New Jersey),true
-400021453,group,HAI,SCO,C,2026-06-14T01:00:00Z,Boston Stadium (Boston),true
-400021463,group,AUS,TUR,D,2026-06-14T04:00:00Z,BC Place Vancouver (Vancouver),true
-400021464,group,GER,CUW,E,2026-06-14T17:00:00Z,Houston Stadium (Houston),true
-400021470,group,NED,JPN,F,2026-06-14T20:00:00Z,Dallas Stadium (Dallas),true
-400021467,group,CIV,ECU,E,2026-06-14T23:00:00Z,Philadelphia Stadium (Philadelphia),true
-400021474,group,SWE,TUN,F,2026-06-15T02:00:00Z,Monterrey Stadium (Monterrey),true
-400021482,group,ESP,CPV,H,2026-06-15T16:00:00Z,Atlanta Stadium (Atlanta),true
-400021478,group,BEL,EGY,G,2026-06-15T19:00:00Z,Seattle Stadium (Seattle),true
-400021486,group,KSA,URU,H,2026-06-15T22:00:00Z,Miami Stadium (Miami),true
-400021476,group,IRN,NZL,G,2026-06-16T01:00:00Z,Los Angeles Stadium (Los Angeles),true
-400021490,group,FRA,SEN,I,2026-06-16T19:00:00Z,New York/New Jersey Stadium (New Jersey),true
-400021488,group,IRQ,NOR,I,2026-06-16T22:00:00Z,Boston Stadium (Boston),true
-400021496,group,ARG,ALG,J,2026-06-17T01:00:00Z,Kansas City Stadium (Kansas City),true
-400021498,group,AUT,JOR,J,2026-06-17T04:00:00Z,San Francisco Bay Area Stadium (San Francisco Bay Area),true
-400021502,group,POR,COD,K,2026-06-17T17:00:00Z,Houston Stadium (Houston),true
-400021507,group,ENG,CRO,L,2026-06-17T20:00:00Z,Dallas Stadium (Dallas),true
-400021510,group,GHA,PAN,L,2026-06-17T23:00:00Z,Toronto Stadium (Toronto),true
-400021504,group,UZB,COL,K,2026-06-18T02:00:00Z,Mexico City Stadium (Mexico City),true
-400021440,group,CZE,RSA,A,2026-06-18T16:00:00Z,Atlanta Stadium (Atlanta),true
-400021446,group,SUI,BIH,B,2026-06-18T19:00:00Z,Los Angeles Stadium (Los Angeles),true
-400021450,group,CAN,QAT,B,2026-06-18T22:00:00Z,BC Place Vancouver (Vancouver),true
-400021442,group,MEX,KOR,A,2026-06-19T01:00:00Z,Guadalajara Stadium (Guadalajara),true
-400021462,group,USA,AUS,D,2026-06-19T19:00:00Z,Seattle Stadium (Seattle),true
-400021454,group,SCO,MAR,C,2026-06-19T22:00:00Z,Boston Stadium (Boston),true
-400021457,group,BRA,HAI,C,2026-06-20T00:30:00Z,Philadelphia Stadium (Philadelphia),true
-400021460,group,TUR,PAR,D,2026-06-20T03:00:00Z,San Francisco Bay Area Stadium (San Francisco Bay Area),true
-400021472,group,NED,SWE,F,2026-06-20T17:00:00Z,Houston Stadium (Houston),true
-400021469,group,GER,CIV,E,2026-06-20T20:00:00Z,Toronto Stadium (Toronto),true
-400021465,group,ECU,CUW,E,2026-06-21T00:00:00Z,Kansas City Stadium (Kansas City),true
-400021475,group,TUN,JPN,F,2026-06-21T04:00:00Z,Monterrey Stadium (Monterrey),true
-400021483,group,ESP,KSA,H,2026-06-21T16:00:00Z,Atlanta Stadium (Atlanta),true
-400021477,group,BEL,IRN,G,2026-06-21T19:00:00Z,Los Angeles Stadium (Los Angeles),true
-400021487,group,URU,CPV,H,2026-06-21T22:00:00Z,Miami Stadium (Miami),true
-400021480,group,NZL,EGY,G,2026-06-22T01:00:00Z,BC Place Vancouver (Vancouver),true
-400021494,group,ARG,AUT,J,2026-06-22T17:00:00Z,Dallas Stadium (Dallas),true
-400021492,group,FRA,IRQ,I,2026-06-22T21:00:00Z,Philadelphia Stadium (Philadelphia),true
-400021491,group,NOR,SEN,I,2026-06-23T00:00:00Z,New York/New Jersey Stadium (New Jersey),true
-400021499,group,JOR,ALG,J,2026-06-23T03:00:00Z,San Francisco Bay Area Stadium (San Francisco Bay Area),true
-400021503,group,POR,UZB,K,2026-06-23T17:00:00Z,Houston Stadium (Houston),true
-400021506,group,ENG,GHA,L,2026-06-23T20:00:00Z,Boston Stadium (Boston),true
-400021511,group,PAN,CRO,L,2026-06-23T23:00:00Z,Toronto Stadium (Toronto),true
-400021501,group,COL,COD,K,2026-06-24T02:00:00Z,Guadalajara Stadium (Guadalajara),true
-400021448,group,BIH,QAT,B,2026-06-24T19:00:00Z,Seattle Stadium (Seattle),true
-400021451,group,SUI,CAN,B,2026-06-24T19:00:00Z,BC Place Vancouver (Vancouver),true
-400021452,group,MAR,HAI,C,2026-06-24T22:00:00Z,Atlanta Stadium (Atlanta),true
-400021455,group,SCO,BRA,C,2026-06-24T22:00:00Z,Miami Stadium (Miami),true
-400021445,group,RSA,KOR,A,2026-06-25T01:00:00Z,Monterrey Stadium (Monterrey),true
-400021444,group,CZE,MEX,A,2026-06-25T01:00:00Z,Mexico City Stadium (Mexico City),true
-400021468,group,CUW,CIV,E,2026-06-25T20:00:00Z,Philadelphia Stadium (Philadelphia),true
-400021466,group,ECU,GER,E,2026-06-25T20:00:00Z,New York/New Jersey Stadium (New Jersey),true
-400021473,group,TUN,NED,F,2026-06-25T23:00:00Z,Kansas City Stadium (Kansas City),true
-400021471,group,JPN,SWE,F,2026-06-25T23:00:00Z,Dallas Stadium (Dallas),true
-400021461,group,PAR,AUS,D,2026-06-26T02:00:00Z,San Francisco Bay Area Stadium (San Francisco Bay Area),true
-400021459,group,TUR,USA,D,2026-06-26T02:00:00Z,Los Angeles Stadium (Los Angeles),true
-400021493,group,SEN,IRQ,I,2026-06-26T19:00:00Z,Toronto Stadium (Toronto),true
-400021489,group,NOR,FRA,I,2026-06-26T19:00:00Z,Boston Stadium (Boston),true
-400021484,group,URU,ESP,H,2026-06-27T00:00:00Z,Guadalajara Stadium (Guadalajara),true
-400021485,group,CPV,KSA,H,2026-06-27T00:00:00Z,Houston Stadium (Houston),true
-400021481,group,NZL,BEL,G,2026-06-27T03:00:00Z,BC Place Vancouver (Vancouver),true
-400021479,group,EGY,IRN,G,2026-06-27T03:00:00Z,Seattle Stadium (Seattle),true
-400021508,group,PAN,ENG,L,2026-06-27T21:00:00Z,New York/New Jersey Stadium (New Jersey),true
-400021509,group,CRO,GHA,L,2026-06-27T21:00:00Z,Philadelphia Stadium (Philadelphia),true
-400021500,group,COD,UZB,K,2026-06-27T23:30:00Z,Atlanta Stadium (Atlanta),true
-400021505,group,COL,POR,K,2026-06-27T23:30:00Z,Miami Stadium (Miami),true
-400021497,group,ALG,AUT,J,2026-06-28T02:00:00Z,Kansas City Stadium (Kansas City),true
-400021495,group,JOR,ARG,J,2026-06-28T02:00:00Z,Dallas Stadium (Dallas),true
+match_id,stage,home_team,away_team,group,kickoff,venue,neutral_site,home_source,away_source
+400021443,group,MEX,RSA,A,2026-06-11T19:00:00Z,Mexico City Stadium (Mexico City),true,,
+400021441,group,KOR,CZE,A,2026-06-12T02:00:00Z,Guadalajara Stadium (Guadalajara),true,,
+400021449,group,CAN,BIH,B,2026-06-12T19:00:00Z,Toronto Stadium (Toronto),true,,
+400021458,group,USA,PAR,D,2026-06-13T01:00:00Z,Los Angeles Stadium (Los Angeles),true,,
+400021447,group,QAT,SUI,B,2026-06-13T19:00:00Z,San Francisco Bay Area Stadium (San Francisco Bay Area),true,,
+400021456,group,BRA,MAR,C,2026-06-13T22:00:00Z,New York/New Jersey Stadium (New Jersey),true,,
+400021453,group,HAI,SCO,C,2026-06-14T01:00:00Z,Boston Stadium (Boston),true,,
+400021463,group,AUS,TUR,D,2026-06-14T04:00:00Z,BC Place Vancouver (Vancouver),true,,
+400021464,group,GER,CUW,E,2026-06-14T17:00:00Z,Houston Stadium (Houston),true,,
+400021470,group,NED,JPN,F,2026-06-14T20:00:00Z,Dallas Stadium (Dallas),true,,
+400021467,group,CIV,ECU,E,2026-06-14T23:00:00Z,Philadelphia Stadium (Philadelphia),true,,
+400021474,group,SWE,TUN,F,2026-06-15T02:00:00Z,Monterrey Stadium (Monterrey),true,,
+400021482,group,ESP,CPV,H,2026-06-15T16:00:00Z,Atlanta Stadium (Atlanta),true,,
+400021478,group,BEL,EGY,G,2026-06-15T19:00:00Z,Seattle Stadium (Seattle),true,,
+400021486,group,KSA,URU,H,2026-06-15T22:00:00Z,Miami Stadium (Miami),true,,
+400021476,group,IRN,NZL,G,2026-06-16T01:00:00Z,Los Angeles Stadium (Los Angeles),true,,
+400021490,group,FRA,SEN,I,2026-06-16T19:00:00Z,New York/New Jersey Stadium (New Jersey),true,,
+400021488,group,IRQ,NOR,I,2026-06-16T22:00:00Z,Boston Stadium (Boston),true,,
+400021496,group,ARG,ALG,J,2026-06-17T01:00:00Z,Kansas City Stadium (Kansas City),true,,
+400021498,group,AUT,JOR,J,2026-06-17T04:00:00Z,San Francisco Bay Area Stadium (San Francisco Bay Area),true,,
+400021502,group,POR,COD,K,2026-06-17T17:00:00Z,Houston Stadium (Houston),true,,
+400021507,group,ENG,CRO,L,2026-06-17T20:00:00Z,Dallas Stadium (Dallas),true,,
+400021510,group,GHA,PAN,L,2026-06-17T23:00:00Z,Toronto Stadium (Toronto),true,,
+400021504,group,UZB,COL,K,2026-06-18T02:00:00Z,Mexico City Stadium (Mexico City),true,,
+400021440,group,CZE,RSA,A,2026-06-18T16:00:00Z,Atlanta Stadium (Atlanta),true,,
+400021446,group,SUI,BIH,B,2026-06-18T19:00:00Z,Los Angeles Stadium (Los Angeles),true,,
+400021450,group,CAN,QAT,B,2026-06-18T22:00:00Z,BC Place Vancouver (Vancouver),true,,
+400021442,group,MEX,KOR,A,2026-06-19T01:00:00Z,Guadalajara Stadium (Guadalajara),true,,
+400021462,group,USA,AUS,D,2026-06-19T19:00:00Z,Seattle Stadium (Seattle),true,,
+400021454,group,SCO,MAR,C,2026-06-19T22:00:00Z,Boston Stadium (Boston),true,,
+400021457,group,BRA,HAI,C,2026-06-20T00:30:00Z,Philadelphia Stadium (Philadelphia),true,,
+400021460,group,TUR,PAR,D,2026-06-20T03:00:00Z,San Francisco Bay Area Stadium (San Francisco Bay Area),true,,
+400021472,group,NED,SWE,F,2026-06-20T17:00:00Z,Houston Stadium (Houston),true,,
+400021469,group,GER,CIV,E,2026-06-20T20:00:00Z,Toronto Stadium (Toronto),true,,
+400021465,group,ECU,CUW,E,2026-06-21T00:00:00Z,Kansas City Stadium (Kansas City),true,,
+400021475,group,TUN,JPN,F,2026-06-21T04:00:00Z,Monterrey Stadium (Monterrey),true,,
+400021483,group,ESP,KSA,H,2026-06-21T16:00:00Z,Atlanta Stadium (Atlanta),true,,
+400021477,group,BEL,IRN,G,2026-06-21T19:00:00Z,Los Angeles Stadium (Los Angeles),true,,
+400021487,group,URU,CPV,H,2026-06-21T22:00:00Z,Miami Stadium (Miami),true,,
+400021480,group,NZL,EGY,G,2026-06-22T01:00:00Z,BC Place Vancouver (Vancouver),true,,
+400021494,group,ARG,AUT,J,2026-06-22T17:00:00Z,Dallas Stadium (Dallas),true,,
+400021492,group,FRA,IRQ,I,2026-06-22T21:00:00Z,Philadelphia Stadium (Philadelphia),true,,
+400021491,group,NOR,SEN,I,2026-06-23T00:00:00Z,New York/New Jersey Stadium (New Jersey),true,,
+400021499,group,JOR,ALG,J,2026-06-23T03:00:00Z,San Francisco Bay Area Stadium (San Francisco Bay Area),true,,
+400021503,group,POR,UZB,K,2026-06-23T17:00:00Z,Houston Stadium (Houston),true,,
+400021506,group,ENG,GHA,L,2026-06-23T20:00:00Z,Boston Stadium (Boston),true,,
+400021511,group,PAN,CRO,L,2026-06-23T23:00:00Z,Toronto Stadium (Toronto),true,,
+400021501,group,COL,COD,K,2026-06-24T02:00:00Z,Guadalajara Stadium (Guadalajara),true,,
+400021448,group,BIH,QAT,B,2026-06-24T19:00:00Z,Seattle Stadium (Seattle),true,,
+400021451,group,SUI,CAN,B,2026-06-24T19:00:00Z,BC Place Vancouver (Vancouver),true,,
+400021452,group,MAR,HAI,C,2026-06-24T22:00:00Z,Atlanta Stadium (Atlanta),true,,
+400021455,group,SCO,BRA,C,2026-06-24T22:00:00Z,Miami Stadium (Miami),true,,
+400021445,group,RSA,KOR,A,2026-06-25T01:00:00Z,Monterrey Stadium (Monterrey),true,,
+400021444,group,CZE,MEX,A,2026-06-25T01:00:00Z,Mexico City Stadium (Mexico City),true,,
+400021468,group,CUW,CIV,E,2026-06-25T20:00:00Z,Philadelphia Stadium (Philadelphia),true,,
+400021466,group,ECU,GER,E,2026-06-25T20:00:00Z,New York/New Jersey Stadium (New Jersey),true,,
+400021473,group,TUN,NED,F,2026-06-25T23:00:00Z,Kansas City Stadium (Kansas City),true,,
+400021471,group,JPN,SWE,F,2026-06-25T23:00:00Z,Dallas Stadium (Dallas),true,,
+400021461,group,PAR,AUS,D,2026-06-26T02:00:00Z,San Francisco Bay Area Stadium (San Francisco Bay Area),true,,
+400021459,group,TUR,USA,D,2026-06-26T02:00:00Z,Los Angeles Stadium (Los Angeles),true,,
+400021493,group,SEN,IRQ,I,2026-06-26T19:00:00Z,Toronto Stadium (Toronto),true,,
+400021489,group,NOR,FRA,I,2026-06-26T19:00:00Z,Boston Stadium (Boston),true,,
+400021484,group,URU,ESP,H,2026-06-27T00:00:00Z,Guadalajara Stadium (Guadalajara),true,,
+400021485,group,CPV,KSA,H,2026-06-27T00:00:00Z,Houston Stadium (Houston),true,,
+400021481,group,NZL,BEL,G,2026-06-27T03:00:00Z,BC Place Vancouver (Vancouver),true,,
+400021479,group,EGY,IRN,G,2026-06-27T03:00:00Z,Seattle Stadium (Seattle),true,,
+400021508,group,PAN,ENG,L,2026-06-27T21:00:00Z,New York/New Jersey Stadium (New Jersey),true,,
+400021509,group,CRO,GHA,L,2026-06-27T21:00:00Z,Philadelphia Stadium (Philadelphia),true,,
+400021500,group,COD,UZB,K,2026-06-27T23:30:00Z,Atlanta Stadium (Atlanta),true,,
+400021505,group,COL,POR,K,2026-06-27T23:30:00Z,Miami Stadium (Miami),true,,
+400021497,group,ALG,AUT,J,2026-06-28T02:00:00Z,Kansas City Stadium (Kansas City),true,,
+400021495,group,JOR,ARG,J,2026-06-28T02:00:00Z,Dallas Stadium (Dallas),true,,
+400021518,round_of_32,RSA,CAN,,2026-06-28T19:00:00Z,Los Angeles Stadium (Los Angeles),true,2A,2B
+400021513,round_of_32,GER,PAR,,2026-06-29T20:30:00Z,Boston Stadium (Boston),true,1E,3ABCDF
+400021522,round_of_32,NED,MAR,,2026-06-30T01:00:00Z,Monterrey Stadium (Monterrey),true,1F,2C
+400021516,round_of_32,BRA,JPN,,2026-06-29T17:00:00Z,Houston Stadium (Houston),true,1C,2F
+400021523,round_of_32,FRA,SWE,,2026-06-30T21:00:00Z,New York/New Jersey Stadium (New Jersey),true,1I,3CDFGH
+400021514,round_of_32,CIV,NOR,,2026-06-30T17:00:00Z,Dallas Stadium (Dallas),true,2E,2I
+400021520,round_of_32,MEX,ECU,,2026-07-01T02:00:00Z,Mexico City Stadium (Mexico City),true,1A,3CEFHI
+400021512,round_of_32,ENG,COD,,2026-07-01T16:00:00Z,Atlanta Stadium (Atlanta),true,1L,3EHIJK
+400021524,round_of_32,USA,BIH,,2026-07-02T00:00:00Z,San Francisco Bay Area Stadium (San Francisco Bay Area),true,1D,3BEFIJ
+400021525,round_of_32,BEL,SEN,,2026-07-01T20:00:00Z,Seattle Stadium (Seattle),true,1G,3AEHIJ
+400021526,round_of_32,POR,CRO,,2026-07-02T23:00:00Z,Toronto Stadium (Toronto),true,2K,2L
+400021519,round_of_32,ESP,AUT,,2026-07-02T19:00:00Z,Los Angeles Stadium (Los Angeles),true,1H,2J
+400021527,round_of_32,SUI,ALG,,2026-07-03T03:00:00Z,BC Place Vancouver (Vancouver),true,1B,3EFGIJ
+400021521,round_of_32,ARG,CPV,,2026-07-03T22:00:00Z,Miami Stadium (Miami),true,1J,2H
+400021517,round_of_32,COL,GHA,,2026-07-04T01:30:00Z,Kansas City Stadium (Kansas City),true,1K,3DEIJL
+400021515,round_of_32,AUS,EGY,,2026-07-03T18:00:00Z,Dallas Stadium (Dallas),true,2D,2G
+400021533,round_of_16,PAR,FRA,,2026-07-04T21:00:00Z,Philadelphia Stadium (Philadelphia),true,W:400021513,W:400021523
+400021530,round_of_16,CAN,MAR,,2026-07-04T17:00:00Z,Houston Stadium (Houston),true,W:400021518,W:400021522
+400021532,round_of_16,BRA,NOR,,2026-07-05T20:00:00Z,New York/New Jersey Stadium (New Jersey),true,W:400021516,W:400021514
+400021531,round_of_16,MEX,ENG,,2026-07-06T00:00:00Z,Mexico City Stadium (Mexico City),true,W:400021520,W:400021512
+400021529,round_of_16,POR,ESP,,2026-07-06T19:00:00Z,Dallas Stadium (Dallas),true,W:400021526,W:400021519
+400021534,round_of_16,USA,BEL,,2026-07-07T00:00:00Z,Seattle Stadium (Seattle),true,W:400021524,W:400021525
+400021528,round_of_16,ARG,EGY,,2026-07-07T16:00:00Z,Atlanta Stadium (Atlanta),true,W:400021521,W:400021515
+400021535,round_of_16,SUI,COL,,2026-07-07T20:00:00Z,BC Place Vancouver (Vancouver),true,W:400021527,W:400021517
+400021536,quarter_final,FRA,MAR,,2026-07-09T20:00:00Z,Boston Stadium (Boston),true,W:400021533,W:400021530
+400021538,quarter_final,,,,2026-07-10T19:00:00Z,Los Angeles Stadium (Los Angeles),true,W:400021529,W:400021534
+400021539,quarter_final,,,,2026-07-11T21:00:00Z,Miami Stadium (Miami),true,W:400021532,W:400021531
+400021537,quarter_final,,,,2026-07-12T01:00:00Z,Kansas City Stadium (Kansas City),true,W:400021528,W:400021535
+400021541,semi_final,,,,2026-07-14T19:00:00Z,Dallas Stadium (Dallas),true,W:400021536,W:400021538
+400021540,semi_final,,,,2026-07-15T19:00:00Z,Atlanta Stadium (Atlanta),true,W:400021539,W:400021537
+400021542,third_place,,,,2026-07-18T21:00:00Z,Miami Stadium (Miami),true,RU:400021541,RU:400021540
+400021543,final,,,,2026-07-19T19:00:00Z,New York/New Jersey Stadium (New Jersey),true,W:400021541,W:400021540
