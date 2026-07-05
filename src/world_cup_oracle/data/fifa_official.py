@@ -225,6 +225,8 @@ def _result_from_match(match: dict) -> MatchResult | None:
         method = MethodOfWin.DRAW
     else:
         method = MethodOfWin.REGULATION
+    home = match.get("Home") or {}
+    away = match.get("Away") or {}
     return MatchResult(
         match_id=str(match.get("IdMatch")),
         home_goals=int(home_score),
@@ -234,6 +236,11 @@ def _result_from_match(match: dict) -> MatchResult | None:
         method=method,
         locked=True,
         notes="official_fifa_sync",
+        # Stage and team codes let knockout results be matched to bracket slots
+        # by team pair, since the simulator generates its own knockout ids.
+        stage=_stage_from_match(match),
+        home_team=(home.get("Abbreviation") or home.get("IdCountry")) or None,
+        away_team=(away.get("Abbreviation") or away.get("IdCountry")) or None,
     )
 
 

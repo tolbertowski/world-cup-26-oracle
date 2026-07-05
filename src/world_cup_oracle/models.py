@@ -15,6 +15,7 @@ from world_cup_oracle.domain import (
     Fixture,
     MatchPrediction,
     MatchResult,
+    MatchStage,
     MethodOfWin,
     Team,
     TeamRating,
@@ -195,6 +196,21 @@ def margin_of_victory_multiplier(home_goals: int, away_goals: int) -> float:
     return sqrt(margin)
 
 
+_STAGE_ORDER = {
+    MatchStage.GROUP: 0,
+    MatchStage.ROUND_OF_32: 1,
+    MatchStage.ROUND_OF_16: 2,
+    MatchStage.QUARTER_FINAL: 3,
+    MatchStage.SEMI_FINAL: 4,
+    MatchStage.THIRD_PLACE: 5,
+    MatchStage.FINAL: 6,
+}
+
+
+def _stage_order(stage: MatchStage | None) -> int:
+    return _STAGE_ORDER.get(stage, 0) if stage is not None else 0
+
+
 def _rating_outcome(result: MatchResult) -> float:
     """Match outcome used for rating updates: level after play is always 0.5.
 
@@ -226,23 +242,44 @@ def apply_results_to_ratings(
     """
     updated = dict(ratings)
     fixtures_by_id = {fixture.match_id: fixture for fixture in fixtures}
-    ordered = sorted(
-        (result for match_id, result in results.items() if match_id in fixtures_by_id and result.locked),
-        key=lambda result: (fixtures_by_id[result.match_id].kickoff or "", result.match_id),
-    )
-    for result in ordered:
-        fixture = fixtures_by_id[result.match_id]
-        home = updated.get(fixture.home_team)
-        away = updated.get(fixture.away_team)
+    # (stage order, kickoff, match_id, home team, away team, neutral, result):
+    # fixture-matched results take teams/venue from the fixture; results that
+    # match no fixture (real knockout games — the fixture list only holds the
+    # group stage) carry their own team codes and are treated as neutral.
+    entries: list[tuple[int, str, str, str, str, bool, MatchResult]] = []
+    for match_id, result in results.items():
+        if not result.locked:
+            continue
+        fixture = fixtures_by_id.get(match_id)
+        if fixture is not None:
+            entries.append(
+                (
+                    _stage_order(fixture.stage),
+                    fixture.kickoff or "",
+                    match_id,
+                    fixture.home_team,
+                    fixture.away_team,
+                    fixture.neutral_site,
+                    result,
+                )
+            )
+        elif result.home_team and result.away_team:
+            entries.append(
+                (_stage_order(result.stage), "", match_id, result.home_team, result.away_team, True, result)
+            )
+    entries.sort(key=lambda entry: entry[:3])
+    for _, _, _, home_team, away_team, neutral, result in entries:
+        home = updated.get(home_team)
+        away = updated.get(away_team)
         if home is None or away is None:
             continue
-        advantage = 0.0 if fixture.neutral_site else home_advantage
+        advantage = 0.0 if neutral else home_advantage
         expected_home = 1.0 / (1.0 + 10 ** ((away.rating - (home.rating + advantage)) / 400.0))
         movement = k_factor * margin_of_victory_multiplier(result.home_goals, result.away_goals) * (
             _rating_outcome(result) - expected_home
         )
-        updated[fixture.home_team] = replace(home, rating=home.rating + movement)
-        updated[fixture.away_team] = replace(away, rating=away.rating - movement)
+        updated[home_team] = replace(home, rating=home.rating + movement)
+        updated[away_team] = replace(away, rating=away.rating - movement)
     return updated
 
 

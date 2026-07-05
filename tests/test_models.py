@@ -96,6 +96,27 @@ def test_shootout_win_counts_as_draw_for_ratings() -> None:
     assert 1700.0 < updated["AUS"].rating < regulation["AUS"].rating
 
 
+def test_knockout_result_with_embedded_teams_moves_ratings() -> None:
+    from world_cup_oracle.domain import MatchStage
+
+    ratings = _two_team_ratings(1804.0, 1756.0)
+    # No fixture exists for this official id — the result carries its own teams.
+    knockout = {
+        "400099001": MatchResult(
+            "400099001",
+            home_goals=0,
+            away_goals=2,
+            locked=True,
+            stage=MatchStage.ROUND_OF_16,
+            home_team="AUS",
+            away_team="USA",
+        )
+    }
+    updated = apply_results_to_ratings(ratings, [], knockout)
+    assert updated["USA"].rating > 1756.0
+    assert updated["AUS"].rating < 1804.0
+
+
 def test_apply_results_ignores_unlocked_and_unknown_fixtures() -> None:
     ratings = _two_team_ratings(1800.0, 1800.0)
     fixtures = [_fixture()]

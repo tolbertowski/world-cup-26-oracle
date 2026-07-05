@@ -6,11 +6,14 @@ import csv
 from pathlib import Path
 from urllib.request import urlopen
 
-from world_cup_oracle.domain import MatchResult, MethodOfWin, TeamRating
+from world_cup_oracle.domain import MatchResult, MatchStage, MethodOfWin, TeamRating
 
 
 MANUAL_MATCH_COLUMNS = [
     "match_id",
+    "stage",
+    "home_team",
+    "away_team",
     "home_goals",
     "away_goals",
     "home_penalties",
@@ -73,6 +76,9 @@ def read_match_updates(path: Path) -> dict[str, MatchResult]:
                 method=_infer_method(row),
                 locked=True,
                 notes=row.get("notes") or None,
+                stage=_optional_stage(row.get("stage")),
+                home_team=(row.get("home_team") or "").strip().upper() or None,
+                away_team=(row.get("away_team") or "").strip().upper() or None,
             )
             updates[result.match_id] = result
     return updates
@@ -137,6 +143,9 @@ def write_match_updates(path: Path, updates: dict[str, MatchResult]) -> None:
             writer.writerow(
                 {
                     "match_id": result.match_id,
+                    "stage": result.stage.value if result.stage else "",
+                    "home_team": result.home_team or "",
+                    "away_team": result.away_team or "",
                     "home_goals": result.home_goals,
                     "away_goals": result.away_goals,
                     "home_penalties": result.home_penalties or "",
@@ -236,6 +245,15 @@ def _optional_int(value: str | None) -> int | None:
     if value is None or value == "":
         return None
     return int(value)
+
+
+def _optional_stage(value: str | None) -> MatchStage | None:
+    if value is None or value.strip() == "":
+        return None
+    try:
+        return MatchStage(value.strip().lower())
+    except ValueError:
+        return None
 
 
 def _float(value: str | None) -> float:
