@@ -30,6 +30,11 @@ TOTAL_GOALS_ANCHORING = 0.45
 # literature-standard value. Negative rho boosts 0-0/1-1 (draws) and trims
 # 1-0/0-1, correcting independent Poisson's known draw under-prediction.
 DEFAULT_DRAW_RHO = -0.10
+# Elo bonus for a host nation playing in its own country (fixtures flagged
+# non-neutral by the FIFA sync). Slightly below the historical fit's general
+# home advantage: a World Cup host crowd is real but shares the stadium with
+# a large travelling support.
+HOST_ADVANTAGE_ELO = 60.0
 
 
 class EloRatingModel:
@@ -87,11 +92,13 @@ class MatchPredictor:
         average_total_goals: float = DEFAULT_AVERAGE_TOTAL_GOALS,
         max_scoreline_goals: int = 7,
         draw_correlation: float = DEFAULT_DRAW_RHO,
+        home_advantage: float = HOST_ADVANTAGE_ELO,
     ) -> None:
         self.ratings = ratings
         self.average_total_goals = average_total_goals
         self.max_scoreline_goals = max_scoreline_goals
         self.draw_correlation = draw_correlation
+        self.home_advantage = home_advantage
 
     @classmethod
     def from_teams(cls, teams: list[Team]) -> "MatchPredictor":
@@ -100,7 +107,8 @@ class MatchPredictor:
     def predict(self, fixture: Fixture) -> MatchPrediction:
         home_rating = self.ratings[fixture.home_team]
         away_rating = self.ratings[fixture.away_team]
-        home_xg, away_xg = self._expected_goals(home_rating, away_rating)
+        advantage = 0.0 if fixture.neutral_site else self.home_advantage
+        home_xg, away_xg = self._expected_goals(home_rating, away_rating, advantage=advantage)
         scorelines = scoreline_distribution(
             home_xg,
             away_xg,
@@ -112,7 +120,7 @@ class MatchPredictor:
         regulation_away = sum(prob for (home, away), prob in scorelines.items() if home < away)
 
         if fixture.is_knockout:
-            shootout_edge = _logistic((home_rating.rating - away_rating.rating) / 420.0)
+            shootout_edge = _logistic((home_rating.rating + advantage - away_rating.rating) / 420.0)
             home_win = regulation_home + regulation_draw * shootout_edge
             away_win = regulation_away + regulation_draw * (1.0 - shootout_edge)
             draw = 0.0
@@ -153,14 +161,15 @@ class MatchPredictor:
             explanation=[
                 f"{fixture.home_team} rating {home_rating.rating:.0f}",
                 f"{fixture.away_team} rating {away_rating.rating:.0f}",
+                *( [f"Host advantage: +{advantage:.0f} Elo for {fixture.home_team}"] if advantage else [] ),
                 f"Expected goals: {home_xg:.2f}-{away_xg:.2f}",
                 f"Corners lean: {home_corners:.1f}-{away_corners:.1f}",
                 f"Cards lean: {home_cards:.1f}-{away_cards:.1f}",
             ],
         )
 
-    def _expected_goals(self, home: TeamRating, away: TeamRating) -> tuple[float, float]:
-        rating_gap = (home.rating - away.rating) / 400.0
+    def _expected_goals(self, home: TeamRating, away: TeamRating, *, advantage: float = 0.0) -> tuple[float, float]:
+        rating_gap = (home.rating + advantage - away.rating) / 400.0
         base = self.average_total_goals / 2.0
         home_xg = base * exp(0.36 * rating_gap) * home.attack / max(0.45, away.defense)
         away_xg = base * exp(-0.36 * rating_gap) * away.attack / max(0.45, home.defense)

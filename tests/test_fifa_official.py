@@ -88,6 +88,20 @@ def test_cli_sync_fifa_from_cached_json(capsys, tmp_path: Path, monkeypatch) -> 
     assert "cache=" in out
 
 
+def test_parse_flags_host_country_fixtures_as_non_neutral() -> None:
+    payload = _fixture_payload()
+    # First match is MEX at a Mexican stadium; mark the stadium country.
+    payload["Results"][0]["Stadium"]["IdCountry"] = "MEX"
+    # Second match is KOR vs CZE at the same kind of venue — neutral for both.
+    payload["Results"][1]["Stadium"]["IdCountry"] = "MEX"
+
+    _, fixtures, _ = parse_fifa_calendar(payload)
+    by_id = {fixture.match_id: fixture for fixture in fixtures}
+
+    assert by_id["400021443"].neutral_site is False  # MEX at home in Mexico
+    assert by_id["400021441"].neutral_site is True  # KOR vs CZE in Mexico
+
+
 def test_parse_translates_knockout_bracket_sources() -> None:
     payload = _fixture_payload(full_group=True)
     r32 = _match("400021500", 73, "MEX", "Mexico", "RSA", "South Africa", "", "KO Stadium", "City")
