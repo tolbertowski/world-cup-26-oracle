@@ -3,14 +3,18 @@
 from __future__ import annotations
 
 import csv
+import json
 from pathlib import Path
 from urllib.request import urlopen
 
-from world_cup_oracle.domain import MatchResult, MethodOfWin, TeamRating
+from world_cup_oracle.domain import MatchResult, MatchStage, MethodOfWin, TeamRating
 
 
 MANUAL_MATCH_COLUMNS = [
     "match_id",
+    "stage",
+    "home_team",
+    "away_team",
     "home_goals",
     "away_goals",
     "home_penalties",
@@ -73,6 +77,9 @@ def read_match_updates(path: Path) -> dict[str, MatchResult]:
                 method=_infer_method(row),
                 locked=True,
                 notes=row.get("notes") or None,
+                stage=_optional_stage(row.get("stage")),
+                home_team=(row.get("home_team") or "").strip().upper() or None,
+                away_team=(row.get("away_team") or "").strip().upper() or None,
             )
             updates[result.match_id] = result
     return updates
@@ -137,6 +144,9 @@ def write_match_updates(path: Path, updates: dict[str, MatchResult]) -> None:
             writer.writerow(
                 {
                     "match_id": result.match_id,
+                    "stage": result.stage.value if result.stage else "",
+                    "home_team": result.home_team or "",
+                    "away_team": result.away_team or "",
                     "home_goals": result.home_goals,
                     "away_goals": result.away_goals,
                     "home_penalties": result.home_penalties or "",
@@ -168,7 +178,10 @@ def upsert_generated_team_adjustments(
     path: Path,
     rows: list[dict[str, str | float]],
     *,
-    note_prefix: str = GENERATED_PLAYER_ADJUSTMENT_PREFIX,
+    # Required: each generator owns a distinct prefix, and passing the wrong
+    # one appends duplicate blocks instead of replacing them (duplicate team
+    # rows are summed by read_team_adjustments, silently inflating deltas).
+    note_prefix: str,
 ) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     kept_rows = _read_adjustment_rows_without_generated(path, note_prefix=note_prefix)
@@ -177,6 +190,24 @@ def upsert_generated_team_adjustments(
         writer.writeheader()
         writer.writerows(kept_rows)
         writer.writerows(_normalize_adjustment_row(row) for row in rows)
+
+
+def write_model_params(path: Path, params: dict) -> Path:
+    """Persist fitted model parameters (e.g. average total goals) as JSON."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(params, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    return path
+
+
+def read_model_params(path: Path) -> dict:
+    """Fitted model parameters, or {} when no fit has been run yet."""
+    if not path.exists():
+        return {}
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    return payload if isinstance(payload, dict) else {}
 
 
 def cache_url(url: str, cache_dir: Path, name: str | None = None) -> Path:
@@ -236,6 +267,15 @@ def _optional_int(value: str | None) -> int | None:
     if value is None or value == "":
         return None
     return int(value)
+
+
+def _optional_stage(value: str | None) -> MatchStage | None:
+    if value is None or value.strip() == "":
+        return None
+    try:
+        return MatchStage(value.strip().lower())
+    except ValueError:
+        return None
 
 
 def _float(value: str | None) -> float:

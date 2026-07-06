@@ -32,6 +32,10 @@ BASE_RATING = 1500.0
 DEFAULT_K_FACTOR = 32.0
 DEFAULT_HOME_ADVANTAGE = 70.0
 DEFAULT_HALF_LIFE_DAYS = 1095.0
+# World Cup 2026 kickoff: the fit drops matches from this date onward so that
+# live-tournament games only enter the model through match_updates.csv (which
+# updates ratings in-tournament) and are never double-counted by a re-fit.
+WORLD_CUP_2026_START = date(2026, 6, 11)
 
 ATTACK_BOUNDS = (0.75, 1.4)
 DEFENSE_BOUNDS = (0.75, 1.4)
@@ -206,6 +210,28 @@ def fit_attack_defense(
         )
         for team in attack
     }
+
+
+def fit_average_goals(
+    records: list[MatchRecord],
+    *,
+    as_of: date | None = None,
+    half_life_days: float = DEFAULT_HALF_LIFE_DAYS,
+) -> float:
+    """Weighted mean of total goals per match, on the same recency/importance
+    weights as the strength fit. Anchors the model's expected-goals baseline to
+    what competitive internationals actually produce instead of a hardcoded
+    constant."""
+    as_of = as_of or _max_date(records)
+    total_goals = 0.0
+    total_weight = 0.0
+    for record in records:
+        weight = competition_weight(record.tournament) * time_weight(record.match_date, as_of, half_life_days)
+        total_goals += weight * (record.home_goals + record.away_goals)
+        total_weight += weight
+    if total_weight == 0:
+        return 2.62
+    return total_goals / total_weight
 
 
 def fit_team_ratings(

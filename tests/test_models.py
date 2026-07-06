@@ -96,6 +96,55 @@ def test_shootout_win_counts_as_draw_for_ratings() -> None:
     assert 1700.0 < updated["AUS"].rating < regulation["AUS"].rating
 
 
+def test_dixon_coles_boosts_draws_and_normalizes() -> None:
+    from world_cup_oracle.models import scoreline_distribution
+
+    plain = scoreline_distribution(1.3, 1.1, rho=0.0)
+    corrected = scoreline_distribution(1.3, 1.1)  # default negative rho
+
+    assert round(sum(plain.values()), 9) == 1.0
+    assert round(sum(corrected.values()), 9) == 1.0
+    draw_plain = sum(prob for (home, away), prob in plain.items() if home == away)
+    draw_corrected = sum(prob for (home, away), prob in corrected.items() if home == away)
+    assert draw_corrected > draw_plain
+    assert corrected[(0, 0)] > plain[(0, 0)]
+    assert corrected[(1, 0)] < plain[(1, 0)]
+    # High-score cells relatively unaffected pre-normalization; rho=0 is identity.
+    assert plain == scoreline_distribution(1.3, 1.1, rho=0.0)
+
+
+def test_expected_goals_total_varies_with_matchup() -> None:
+    teams = build_demo_teams()
+    predictor = MatchPredictor.from_teams(teams)
+    mismatch = predictor.predict(Fixture("T1", MatchStage.GROUP, "BRA", "HAI", group="C"))
+    # Two mid-rated sides from the demo data for an even pairing.
+    even = predictor.predict(Fixture("T2", MatchStage.GROUP, "KOR", "CZE", group="A"))
+    # Totals are anchored, not pinned: a mismatch should out-total an even tie.
+    assert mismatch.total_goals > even.total_goals
+    assert abs(even.total_goals - predictor.average_total_goals) < 0.75
+
+
+def test_knockout_result_with_embedded_teams_moves_ratings() -> None:
+    from world_cup_oracle.domain import MatchStage
+
+    ratings = _two_team_ratings(1804.0, 1756.0)
+    # No fixture exists for this official id — the result carries its own teams.
+    knockout = {
+        "400099001": MatchResult(
+            "400099001",
+            home_goals=0,
+            away_goals=2,
+            locked=True,
+            stage=MatchStage.ROUND_OF_16,
+            home_team="AUS",
+            away_team="USA",
+        )
+    }
+    updated = apply_results_to_ratings(ratings, [], knockout)
+    assert updated["USA"].rating > 1756.0
+    assert updated["AUS"].rating < 1804.0
+
+
 def test_apply_results_ignores_unlocked_and_unknown_fixtures() -> None:
     ratings = _two_team_ratings(1800.0, 1800.0)
     fixtures = [_fixture()]

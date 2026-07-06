@@ -15,10 +15,21 @@ from world_cup_oracle.domain import (
     Fixture,
     MatchPrediction,
     MatchResult,
+    MatchStage,
     MethodOfWin,
     Team,
     TeamRating,
 )
+
+
+DEFAULT_AVERAGE_TOTAL_GOALS = 2.62
+# Exponent for pulling each match's expected total toward the tournament
+# average: 1.0 pins every match to the average, 0.0 leaves totals unanchored.
+TOTAL_GOALS_ANCHORING = 0.45
+# Dixon-Coles low-score correlation: a fixed, transparent assumption at the
+# literature-standard value. Negative rho boosts 0-0/1-1 (draws) and trims
+# 1-0/0-1, correcting independent Poisson's known draw under-prediction.
+DEFAULT_DRAW_RHO = -0.10
 
 
 class EloRatingModel:
@@ -73,12 +84,14 @@ class MatchPredictor:
         self,
         ratings: dict[str, TeamRating],
         *,
-        average_total_goals: float = 2.62,
+        average_total_goals: float = DEFAULT_AVERAGE_TOTAL_GOALS,
         max_scoreline_goals: int = 7,
+        draw_correlation: float = DEFAULT_DRAW_RHO,
     ) -> None:
         self.ratings = ratings
         self.average_total_goals = average_total_goals
         self.max_scoreline_goals = max_scoreline_goals
+        self.draw_correlation = draw_correlation
 
     @classmethod
     def from_teams(cls, teams: list[Team]) -> "MatchPredictor":
@@ -92,6 +105,7 @@ class MatchPredictor:
             home_xg,
             away_xg,
             max_goals=self.max_scoreline_goals,
+            rho=self.draw_correlation,
         )
         regulation_home = sum(prob for (home, away), prob in scorelines.items() if home > away)
         regulation_draw = sum(prob for (home, away), prob in scorelines.items() if home == away)
@@ -150,7 +164,11 @@ class MatchPredictor:
         base = self.average_total_goals / 2.0
         home_xg = base * exp(0.36 * rating_gap) * home.attack / max(0.45, away.defense)
         away_xg = base * exp(-0.36 * rating_gap) * away.attack / max(0.45, home.defense)
-        scale = self.average_total_goals / max(0.1, home_xg + away_xg)
+        # Damped anchor: pull the match total toward the tournament average
+        # without forcing it there, so mismatches can total more goals and
+        # cagey pairings fewer. TOTAL_GOALS_ANCHORING=1 would pin every match
+        # to the average (the old behavior); 0 would not anchor at all.
+        scale = (self.average_total_goals / max(0.1, home_xg + away_xg)) ** TOTAL_GOALS_ANCHORING
         return max(0.15, home_xg * scale), max(0.15, away_xg * scale)
 
     def _event_projections(
@@ -195,6 +213,21 @@ def margin_of_victory_multiplier(home_goals: int, away_goals: int) -> float:
     return sqrt(margin)
 
 
+_STAGE_ORDER = {
+    MatchStage.GROUP: 0,
+    MatchStage.ROUND_OF_32: 1,
+    MatchStage.ROUND_OF_16: 2,
+    MatchStage.QUARTER_FINAL: 3,
+    MatchStage.SEMI_FINAL: 4,
+    MatchStage.THIRD_PLACE: 5,
+    MatchStage.FINAL: 6,
+}
+
+
+def _stage_order(stage: MatchStage | None) -> int:
+    return _STAGE_ORDER.get(stage, 0) if stage is not None else 0
+
+
 def _rating_outcome(result: MatchResult) -> float:
     """Match outcome used for rating updates: level after play is always 0.5.
 
@@ -226,23 +259,44 @@ def apply_results_to_ratings(
     """
     updated = dict(ratings)
     fixtures_by_id = {fixture.match_id: fixture for fixture in fixtures}
-    ordered = sorted(
-        (result for match_id, result in results.items() if match_id in fixtures_by_id and result.locked),
-        key=lambda result: (fixtures_by_id[result.match_id].kickoff or "", result.match_id),
-    )
-    for result in ordered:
-        fixture = fixtures_by_id[result.match_id]
-        home = updated.get(fixture.home_team)
-        away = updated.get(fixture.away_team)
+    # (stage order, kickoff, match_id, home team, away team, neutral, result):
+    # fixture-matched results take teams/venue from the fixture; results that
+    # match no fixture (real knockout games — the fixture list only holds the
+    # group stage) carry their own team codes and are treated as neutral.
+    entries: list[tuple[int, str, str, str, str, bool, MatchResult]] = []
+    for match_id, result in results.items():
+        if not result.locked:
+            continue
+        fixture = fixtures_by_id.get(match_id)
+        if fixture is not None:
+            entries.append(
+                (
+                    _stage_order(fixture.stage),
+                    fixture.kickoff or "",
+                    match_id,
+                    fixture.home_team,
+                    fixture.away_team,
+                    fixture.neutral_site,
+                    result,
+                )
+            )
+        elif result.home_team and result.away_team:
+            entries.append(
+                (_stage_order(result.stage), "", match_id, result.home_team, result.away_team, True, result)
+            )
+    entries.sort(key=lambda entry: entry[:3])
+    for _, _, _, home_team, away_team, neutral, result in entries:
+        home = updated.get(home_team)
+        away = updated.get(away_team)
         if home is None or away is None:
             continue
-        advantage = 0.0 if fixture.neutral_site else home_advantage
+        advantage = 0.0 if neutral else home_advantage
         expected_home = 1.0 / (1.0 + 10 ** ((away.rating - (home.rating + advantage)) / 400.0))
         movement = k_factor * margin_of_victory_multiplier(result.home_goals, result.away_goals) * (
             _rating_outcome(result) - expected_home
         )
-        updated[fixture.home_team] = replace(home, rating=home.rating + movement)
-        updated[fixture.away_team] = replace(away, rating=away.rating - movement)
+        updated[home_team] = replace(home, rating=home.rating + movement)
+        updated[away_team] = replace(away, rating=away.rating - movement)
     return updated
 
 
@@ -261,16 +315,40 @@ def scoreline_distribution(
     away_xg: float,
     *,
     max_goals: int = 7,
+    rho: float = DEFAULT_DRAW_RHO,
 ) -> dict[tuple[int, int], float]:
+    """Poisson scoreline grid with a Dixon-Coles low-score correction.
+
+    Independent Poisson under-predicts draws; the Dixon-Coles tau factor
+    reweights the four low-score cells (with negative ``rho`` boosting 0-0 and
+    1-1 while trimming 1-0 and 0-1) before normalization. ``rho=0`` reproduces
+    the plain independent-Poisson grid.
+    """
     probabilities: dict[tuple[int, int], float] = {}
     for home_goals in range(max_goals + 1):
         for away_goals in range(max_goals + 1):
-            probabilities[(home_goals, away_goals)] = _poisson_pmf(home_goals, home_xg) * _poisson_pmf(
+            probability = _poisson_pmf(home_goals, home_xg) * _poisson_pmf(away_goals, away_xg)
+            probabilities[(home_goals, away_goals)] = probability * _dixon_coles_tau(
+                home_goals,
                 away_goals,
+                home_xg,
                 away_xg,
+                rho,
             )
     total = sum(probabilities.values())
     return {score: probability / total for score, probability in probabilities.items()}
+
+
+def _dixon_coles_tau(home_goals: int, away_goals: int, home_xg: float, away_xg: float, rho: float) -> float:
+    if home_goals == 0 and away_goals == 0:
+        return max(0.0, 1.0 - home_xg * away_xg * rho)
+    if home_goals == 0 and away_goals == 1:
+        return max(0.0, 1.0 + home_xg * rho)
+    if home_goals == 1 and away_goals == 0:
+        return max(0.0, 1.0 + away_xg * rho)
+    if home_goals == 1 and away_goals == 1:
+        return max(0.0, 1.0 - rho)
+    return 1.0
 
 
 def _actual_home_score(result: MatchResult) -> float:

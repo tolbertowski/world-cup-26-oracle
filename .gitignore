@@ -16,6 +16,7 @@ data/processed/*
 !data/processed/.gitkeep
 !data/processed/teams.csv
 !data/processed/fixtures.csv
+!data/processed/model_params.json
 models/*
 !models/.gitkeep
 reports/*

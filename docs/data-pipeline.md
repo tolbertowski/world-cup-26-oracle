@@ -147,13 +147,34 @@ manual and `player_callups:` rows intact. The dataset is goals-only, so the fit
 does not touch cards, corners, discipline, or tempo. Use `--no-seed-rating` to
 write only the attack/defense deltas, or `--half-life-days` to tune recency.
 
-**Do not re-fit against a snapshot that contains the live tournament.** Once
-World Cup 2026 matches are locked in `data/manual/match_updates.csv`, those
-results already move ratings in-tournament. Re-running `fit-ratings` against a
-freshly cached dataset that includes the same matches would bake them into
-`seed_rating` *and* replay them again from the lock file — double-counting every
-played game. Keep the cached snapshot frozen at its pre-tournament state until
-the tournament ends.
+**Live-tournament matches are excluded from the fit automatically.** World Cup
+2026 results locked in `data/manual/match_updates.csv` already move ratings
+in-tournament, so `fit-ratings` drops all matches on or after the tournament
+start (`--cutoff`, default 2026-06-11) before fitting. This means re-fitting
+against a freshly cached snapshot is always safe: played tournament games enter
+the model exactly once, through the lock file, never through `seed_rating`.
+
+## Final Stages Workflow
+
+As the tournament progresses, keep the model current with one command:
+
+```bash
+world-cup-oracle sync-fifa --apply
+```
+
+This merges every completed official result — group and knockout — into
+`data/manual/match_updates.csv`. Knockout rows carry `stage`, `home_team`, and
+`away_team` columns; those let the simulator, the projected bracket, and the
+rating updates match a played knockout game to its bracket slot by stage and
+team pair (the simulator's own knockout ids are generated, so match ids alone
+cannot identify them). Locking a knockout result by hand works the same way:
+fill in `stage` (e.g. `round_of_16`) and the two team codes.
+
+Locked results then do three things at load time: fix group standings, override
+knockout slots so played matches are never re-simulated, and move each side's
+Elo rating (margin-capped, shootouts as draws) so upsets propagate to every
+remaining round. No re-fit is needed — and `fit-ratings` ignores
+live-tournament matches entirely (see above).
 
 ## Official FIFA Shortcut
 

@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import csv
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
@@ -20,6 +20,7 @@ from world_cup_oracle.data.pipeline import (
     TEAM_SOURCE_COLUMNS,
     DataValidationReport,
     export_processed_data,
+    read_teams_csv,
     validate_tournament_data,
 )
 from world_cup_oracle.domain import Fixture, MatchResult, MatchStage, MethodOfWin, Team
@@ -77,8 +78,18 @@ def write_fifa_cache(payload: dict, cache_dir: Path, *, season_id: str) -> Path:
 def parse_fifa_calendar(payload: dict) -> tuple[list[Team], list[Fixture], dict[str, MatchResult]]:
     matches = payload.get("Results", [])
     group_matches = [match for match in matches if _stage_from_match(match) == MatchStage.GROUP]
+    knockout_matches = sorted(
+        (match for match in matches if _stage_from_match(match) != MatchStage.GROUP),
+        key=lambda match: match.get("MatchNumber") or 0,
+    )
     teams = _teams_from_group_matches(group_matches)
+    number_to_id = {
+        match.get("MatchNumber"): str(match.get("IdMatch"))
+        for match in matches
+        if match.get("MatchNumber") and match.get("IdMatch")
+    }
     fixtures = [_fixture_from_match(match) for match in group_matches]
+    fixtures += [_knockout_fixture_from_match(match, number_to_id) for match in knockout_matches]
     completed_results = {
         result.match_id: result
         for result in (_result_from_match(match) for match in matches)
@@ -109,6 +120,7 @@ def sync_fifa_calendar(
     updates_path = None
 
     if apply and report.ok:
+        teams = _preserve_fitted_seed_ratings(teams, processed_dir)
         processed = export_processed_data(teams, fixtures, processed_dir)
         processed_paths = (processed[0], processed[1])
         if update_results:
@@ -127,6 +139,22 @@ def sync_fifa_calendar(
         processed_paths=processed_paths,
         updates_path=updates_path,
     )
+
+
+def _preserve_fitted_seed_ratings(teams: list[Team], processed_dir: Path) -> list[Team]:
+    """Carry fitted seed ratings over a calendar re-sync.
+
+    The FIFA calendar knows nothing about ratings, so a matchday sync must not
+    reset `seed_rating` (fit by `fit-ratings`) back to the 1500 default.
+    """
+    teams_path = processed_dir / "teams.csv"
+    if not teams_path.exists():
+        return teams
+    existing = {team.code: team.seed_rating for team in read_teams_csv(teams_path)}
+    return [
+        replace(team, seed_rating=existing[team.code]) if team.code in existing else team
+        for team in teams
+    ]
 
 
 def write_official_raw_files(teams: list[Team], fixtures: list[Fixture], raw_dir: Path) -> tuple[Path, Path]:
@@ -209,6 +237,39 @@ def _fixture_from_match(match: dict) -> Fixture:
     )
 
 
+def _knockout_fixture_from_match(match: dict, number_to_id: dict) -> Fixture:
+    """Knockout fixture with bracket provenance instead of placeholder team codes.
+
+    Future matches have no teams yet; PlaceHolderA/B carry either a seed label
+    ("1A", "2B", "3ABCDF") or a reference to an earlier match ("W89" = winner of
+    match number 89, "RU101" = loser of semi-final 101), which we translate to
+    the referenced match id.
+    """
+    base = _fixture_from_match(match)
+    home = match.get("Home") or {}
+    away = match.get("Away") or {}
+    return replace(
+        base,
+        home_team=home.get("Abbreviation") or home.get("IdCountry") or "",
+        away_team=away.get("Abbreviation") or away.get("IdCountry") or "",
+        home_source=_translate_placeholder(match.get("PlaceHolderA"), number_to_id),
+        away_source=_translate_placeholder(match.get("PlaceHolderB"), number_to_id),
+    )
+
+
+def _translate_placeholder(value: str | None, number_to_id: dict) -> str | None:
+    if not value:
+        return None
+    label = value.strip().upper()
+    if label.startswith("RU") and label[2:].isdigit():
+        referenced = number_to_id.get(int(label[2:]))
+        return f"RU:{referenced}" if referenced else label
+    if label.startswith("W") and label[1:].isdigit():
+        referenced = number_to_id.get(int(label[1:]))
+        return f"W:{referenced}" if referenced else label
+    return label  # seed labels such as 1A, 2B, 3ABCDF
+
+
 def _result_from_match(match: dict) -> MatchResult | None:
     home_score = match.get("HomeTeamScore")
     away_score = match.get("AwayTeamScore")
@@ -225,6 +286,8 @@ def _result_from_match(match: dict) -> MatchResult | None:
         method = MethodOfWin.DRAW
     else:
         method = MethodOfWin.REGULATION
+    home = match.get("Home") or {}
+    away = match.get("Away") or {}
     return MatchResult(
         match_id=str(match.get("IdMatch")),
         home_goals=int(home_score),
@@ -234,6 +297,11 @@ def _result_from_match(match: dict) -> MatchResult | None:
         method=method,
         locked=True,
         notes="official_fifa_sync",
+        # Stage and team codes let knockout results be matched to bracket slots
+        # by team pair, since the simulator generates its own knockout ids.
+        stage=_stage_from_match(match),
+        home_team=(home.get("Abbreviation") or home.get("IdCountry")) or None,
+        away_team=(away.get("Abbreviation") or away.get("IdCountry")) or None,
     )
 
 
