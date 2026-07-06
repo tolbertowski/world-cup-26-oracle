@@ -8,6 +8,7 @@ from pathlib import Path
 
 from world_cup_oracle.data import build_demo_fixtures, build_demo_teams, load_processed_or_demo
 from world_cup_oracle.data.io import (
+    GENERATED_PLAYER_ADJUSTMENT_PREFIX,
     GENERATED_RATINGS_PREFIX,
     apply_team_adjustments,
     cache_url,
@@ -196,7 +197,7 @@ def main(argv: list[str] | None = None) -> int:
             return 1
         rows = [adjustment.as_adjustment_row() for adjustment in adjustments]
         if not args.dry_run:
-            upsert_generated_team_adjustments(args.output, rows)
+            upsert_generated_team_adjustments(args.output, rows, note_prefix=GENERATED_PLAYER_ADJUSTMENT_PREFIX)
         print("team_code,rating_delta,attack_delta,defense_delta,tempo_delta,squad_score,players")
         for adjustment in adjustments:
             print(
@@ -228,7 +229,7 @@ def main(argv: list[str] | None = None) -> int:
         rows = [item.as_adjustment_row(note_prefix=GENERATED_RATINGS_PREFIX) for item in fitted]
         average_goals = fit_average_goals(records, half_life_days=args.half_life_days)
         if not args.dry_run:
-            upsert_generated_team_adjustments(args.output, rows)
+            upsert_generated_team_adjustments(args.output, rows, note_prefix=GENERATED_RATINGS_PREFIX)
             if not args.no_seed_rating:
                 update_seed_ratings(args.teams, {item.team_code: item.elo for item in fitted})
             params_path = write_model_params(

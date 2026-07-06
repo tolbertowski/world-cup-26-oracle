@@ -178,7 +178,10 @@ def upsert_generated_team_adjustments(
     path: Path,
     rows: list[dict[str, str | float]],
     *,
-    note_prefix: str = GENERATED_PLAYER_ADJUSTMENT_PREFIX,
+    # Required: each generator owns a distinct prefix, and passing the wrong
+    # one appends duplicate blocks instead of replacing them (duplicate team
+    # rows are summed by read_team_adjustments, silently inflating deltas).
+    note_prefix: str,
 ) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     kept_rows = _read_adjustment_rows_without_generated(path, note_prefix=note_prefix)

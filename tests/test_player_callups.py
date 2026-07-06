@@ -73,6 +73,7 @@ def test_upsert_generated_team_adjustments_replaces_previous_player_rows(tmp_pat
                 "notes": "player_callups: new",
             }
         ],
+        note_prefix="player_callups:",
     )
 
     adjustments = read_team_adjustments(path)

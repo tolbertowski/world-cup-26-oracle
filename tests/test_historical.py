@@ -123,6 +123,43 @@ def test_fit_team_ratings_resolves_aliases_and_reports_unmatched(tmp_path: Path)
     assert bra.elo > 1500
 
 
+def test_cli_fit_ratings_is_idempotent(tmp_path: Path, monkeypatch) -> None:
+    """Re-running fit-ratings must replace its generated block, not append to it."""
+    import world_cup_oracle.cli as cli
+    from world_cup_oracle.cli import main
+
+    monkeypatch.setattr(cli, "MODEL_PARAMS_PATH", tmp_path / "model_params.json")
+    results_path = _write_results(
+        tmp_path / "results.csv",
+        [
+            "2025-01-01,Brazil,South Korea,2,0,FIFA World Cup,C,X,TRUE",
+            "2025-02-01,South Korea,Brazil,0,1,FIFA World Cup,C,X,TRUE",
+        ],
+    )
+    teams_path = tmp_path / "teams.csv"
+    teams_path.write_text(
+        "team_code,team_name,group,confederation,fifa_rank,seed_rating\n"
+        "BRA,Brazil,A,,,1500.0\n"
+        "KOR,Korea Republic,A,,,1500.0\n",
+        encoding="utf-8",
+    )
+    output_path = tmp_path / "team_adjustments.csv"
+    args = [
+        "fit-ratings",
+        "--results", str(results_path),
+        "--teams", str(teams_path),
+        "--output", str(output_path),
+    ]
+
+    assert main(args) == 0
+    assert main(args) == 0
+
+    text = output_path.read_text(encoding="utf-8")
+    assert text.count("international_results:") == 2  # one row per team, no stacking
+    adjustments = read_team_adjustments(output_path)
+    assert len(adjustments) == 2
+
+
 def test_generated_rows_are_idempotent_and_coexist(tmp_path: Path) -> None:
     path = tmp_path / "team_adjustments.csv"
     # A manual row and a player_callups row must survive the ratings upsert.
