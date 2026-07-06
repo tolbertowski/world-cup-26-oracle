@@ -14,7 +14,7 @@ from world_cup_oracle.data.io import (
     read_team_adjustments,
 )
 from world_cup_oracle.domain import Fixture, MatchPrediction, MatchStage, Team
-from world_cup_oracle.models import MatchPredictor
+from world_cup_oracle.models import MatchPredictor, apply_results_to_ratings
 from world_cup_oracle.simulation import project_bracket, run_monte_carlo
 
 
@@ -371,6 +371,7 @@ def _load_tournament_context() -> tuple[list[Team], list[Fixture], MatchPredicto
     adjustments = read_team_adjustments(ROOT / "data" / "manual" / "team_adjustments.csv")
     predictor = MatchPredictor(apply_team_adjustments(predictor.ratings, adjustments))
     locked_results = read_match_updates(ROOT / "data" / "manual" / "match_updates.csv")
+    predictor = MatchPredictor(apply_results_to_ratings(predictor.ratings, fixtures, locked_results))
     return teams, fixtures, predictor, locked_results, tournament_data.source
 
 
