@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>World Cup 26 Oracle</title>
+    <meta
+      name="description"
+      content="Match odds, scorelines, and bracket simulations for the 2026 World Cup. Not betting advice."
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/@stlite/browser@1.8.1/build/stlite.css"
+    />
+    <style>
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        background: #0e1117;
+      }
+      #root {
+        height: 100%;
+      }
+      .wc-loading {
+        color: #fafafa;
+        font-family: "Source Sans Pro", -apple-system, sans-serif;
+        text-align: center;
+        padding-top: 18vh;
+      }
+      .wc-loading h1 {
+        font-weight: 600;
+      }
+      .wc-loading p {
+        color: #9aa0a6;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root">
+      <div class="wc-loading">
+        <h1>World Cup 26 Oracle</h1>
+        <p>
+          Loading the prediction engine in your browser (Python via
+          WebAssembly) &mdash; first load takes a moment.
+        </p>
+        <p>Community project for fans. Not betting advice.</p>
+      </div>
+    </div>
+    <script type="module">
+      import { mount } from "https://cdn.jsdelivr.net/npm/@stlite/browser@1.8.1/build/stlite.js";
+
+      mount(
+        {
+          requirements: ["pandas", "plotly"],
+          entrypoint: "app.py",
+          files: /*__STLITE_FILES__*/ {},
+        },
+        document.getElementById("root"),
+      );
+    </script>
+  </body>
+</html>
