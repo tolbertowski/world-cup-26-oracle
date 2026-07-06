@@ -41,6 +41,12 @@ than a hardcoded constant): the total is pulled toward the average with a 0.45
 exponent instead of being pinned to it, so mismatches can produce more goals
 and cagey pairings fewer.
 
+Host nations playing in their own country get a +60 Elo host advantage. The
+FIFA sync flags a fixture as non-neutral when the home-listed side's code
+matches the stadium's country, and the predictor applies the bonus to both
+expected goals and the knockout shootout edge. All other matches are treated
+as neutral-venue.
+
 Knockout draws are resolved into eventual win probabilities using rating edge,
 with method probabilities split between regulation, extra time, and penalties.
 

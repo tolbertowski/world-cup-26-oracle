@@ -96,6 +96,23 @@ def test_shootout_win_counts_as_draw_for_ratings() -> None:
     assert 1700.0 < updated["AUS"].rating < regulation["AUS"].rating
 
 
+def test_host_advantage_shifts_probabilities_home() -> None:
+    teams = build_demo_teams()
+    predictor = MatchPredictor.from_teams(teams)
+    neutral = predictor.predict(Fixture("T1", MatchStage.GROUP, "USA", "KOR", group="D", neutral_site=True))
+    hosted = predictor.predict(Fixture("T1", MatchStage.GROUP, "USA", "KOR", group="D", neutral_site=False))
+
+    assert hosted.home_win > neutral.home_win
+    assert hosted.expected_home_goals > neutral.expected_home_goals
+    assert any("Host advantage" in line for line in hosted.explanation)
+    assert not any("Host advantage" in line for line in neutral.explanation)
+
+    # The edge also carries into knockout eventual-win probability.
+    neutral_ko = predictor.predict(Fixture("K1", MatchStage.ROUND_OF_16, "USA", "KOR", neutral_site=True))
+    hosted_ko = predictor.predict(Fixture("K1", MatchStage.ROUND_OF_16, "USA", "KOR", neutral_site=False))
+    assert hosted_ko.home_win > neutral_ko.home_win
+
+
 def test_dixon_coles_boosts_draws_and_normalizes() -> None:
     from world_cup_oracle.models import scoreline_distribution
 
