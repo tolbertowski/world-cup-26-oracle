@@ -225,15 +225,24 @@ def _fixture_from_match(match: dict) -> Fixture:
     venue = f"{venue_name} ({city})" if venue_name and city else venue_name or city
     match_number = match.get("MatchNumber")
     match_id = str(match.get("IdMatch") or f"M{match_number:03d}")
+    home_team = home.get("Abbreviation") or home.get("IdCountry") or match.get("PlaceHolderA") or ""
+    away_team = away.get("Abbreviation") or away.get("IdCountry") or match.get("PlaceHolderB") or ""
+    # A host nation playing in its own country gets a real home crowd. The
+    # neutral flag is home-relative, so only the home-listed side can carry it
+    # (hosts are conventionally listed home at their venues); TBD knockout
+    # fixtures stay neutral and pick up the flag on a later sync once the
+    # teams are known.
+    stadium_country = stadium.get("IdCountry")
+    neutral = not (stadium_country and stadium_country == home_team)
     return Fixture(
         match_id=match_id,
         stage=_stage_from_match(match),
-        home_team=home.get("Abbreviation") or home.get("IdCountry") or match.get("PlaceHolderA") or "",
-        away_team=away.get("Abbreviation") or away.get("IdCountry") or match.get("PlaceHolderB") or "",
+        home_team=home_team,
+        away_team=away_team,
         group=_group_from_match(match),
         kickoff=match.get("Date"),
         venue=venue,
-        neutral_site=True,
+        neutral_site=neutral,
     )
 
 
