@@ -43,6 +43,32 @@ make fit-ratings
 make player-callups
 ```
 
+## Deploy (GitHub Pages)
+
+The app deploys as a static site: [stlite](https://github.com/whitphx/stlite)
+runs Streamlit in the browser via WebAssembly, so GitHub Pages can host it with
+no server. `.github/workflows/deploy.yml` does two things:
+
+- **Scheduled data refresh** (every 6 hours, or manually via *Run workflow*):
+  runs `world-cup-oracle sync-fifa --apply` and commits any new official
+  results to `main`.
+- **Site build & deploy**: `scripts/build_site.py` assembles `_site/` (app,
+  package source, and data CSVs mounted into the browser filesystem) and
+  publishes it to Pages.
+
+One-time setup: repo Settings → Pages → Source: **GitHub Actions** (or
+`gh api repos/<owner>/<repo>/pages -X POST -f build_type=workflow`).
+
+Verify a build locally before pushing:
+
+```bash
+python3 scripts/build_site.py
+python3 scripts/serve_site.py 8765  # open http://127.0.0.1:8765
+```
+
+The deployed app is read-only: predictions react to the data baked in at build
+time, and the scheduled sync keeps that data current through the final.
+
 ## Data Workflow
 
 The app ships with an illustrative offline demo tournament so it can run from a

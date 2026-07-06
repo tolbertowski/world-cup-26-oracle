@@ -10,12 +10,11 @@ readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
 authors = [{ name = "Iat Long Guan" }]
+# Kept lean on purpose: the model is pure stdlib, and the browser (stlite)
+# build downloads every dependency as a Pyodide wheel.
 dependencies = [
-    "numpy>=1.26",
     "pandas>=2.2",
     "plotly>=5.22",
-    "scikit-learn>=1.5",
-    "scipy>=1.13",
     "streamlit>=1.36",
 ]
 
