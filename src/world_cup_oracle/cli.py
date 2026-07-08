@@ -6,15 +6,12 @@ import argparse
 from datetime import date
 from pathlib import Path
 
-from world_cup_oracle.data import build_demo_fixtures, build_demo_teams, load_processed_or_demo
+from world_cup_oracle.context import load_live_context
+from world_cup_oracle.data import build_demo_fixtures, build_demo_teams
 from world_cup_oracle.data.io import (
     GENERATED_PLAYER_ADJUSTMENT_PREFIX,
     GENERATED_RATINGS_PREFIX,
-    apply_team_adjustments,
     cache_url,
-    read_match_updates,
-    read_model_params,
-    read_team_adjustments,
     upsert_generated_team_adjustments,
     write_manual_templates,
     write_model_params,
@@ -45,8 +42,9 @@ from world_cup_oracle.data.player_callups import (
     build_player_callup_adjustments,
     read_player_callups,
 )
-from world_cup_oracle.models import DEFAULT_AVERAGE_TOTAL_GOALS, MatchPredictor, apply_results_to_ratings
+from world_cup_oracle.models import MatchPredictor
 from world_cup_oracle.simulation import project_bracket, run_monte_carlo
+from world_cup_oracle.snapshots import build_prediction_snapshot, write_snapshot
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -125,6 +123,14 @@ def build_parser() -> argparse.ArgumentParser:
         "project-bracket",
         help="Print the deterministic most-likely knockout bracket from processed data.",
     )
+
+    snapshot = subparsers.add_parser(
+        "snapshot-predictions",
+        help="Write a timestamped snapshot of current predictions (audit trail).",
+    )
+    snapshot.add_argument("--simulations", type=int, default=5000)
+    snapshot.add_argument("--seed", type=int, default=26)
+    snapshot.add_argument("--output-dir", type=Path, default=PROJECT_ROOT / "data" / "snapshots")
 
     subparsers.add_parser("release-check", help="Fail if the app would still use demo data.")
     return parser
@@ -285,18 +291,9 @@ def main(argv: list[str] | None = None) -> int:
             print(f"updates={result.updates_path}")
         return 0 if result.ok else 1
     if args.command == "project-bracket":
-        tournament = load_processed_or_demo(PROJECT_ROOT / "data" / "processed")
-        adjustments = read_team_adjustments(PROJECT_ROOT / "data" / "manual" / "team_adjustments.csv")
-        locked = read_match_updates(PROJECT_ROOT / "data" / "manual" / "match_updates.csv")
-        params = read_model_params(MODEL_PARAMS_PATH)
-        ratings = apply_team_adjustments(MatchPredictor.from_teams(tournament.teams).ratings, adjustments)
-        ratings = apply_results_to_ratings(ratings, tournament.fixtures, locked)
-        predictor = MatchPredictor(
-            ratings,
-            average_total_goals=params.get("average_total_goals", DEFAULT_AVERAGE_TOTAL_GOALS),
-        )
-        bracket = project_bracket(tournament.teams, tournament.fixtures, predictor, locked)
-        names = {team.code: team.name for team in tournament.teams}
+        teams, fixtures, predictor, locked, _ = load_live_context(PROJECT_ROOT)
+        bracket = project_bracket(teams, fixtures, predictor, locked)
+        names = {team.code: team.name for team in teams}
         for stage, matches in bracket.rounds:
             print(stage.value)
             for match in matches:
@@ -306,6 +303,23 @@ def main(argv: list[str] | None = None) -> int:
                 away = names.get(match.away_team, match.away_team)
                 print(f"  {home} vs {away} -> {winner} ({tag})")
         print(f"champion={names.get(bracket.champion, bracket.champion)}")
+        return 0
+    if args.command == "snapshot-predictions":
+        teams, fixtures, predictor, locked, source = load_live_context(PROJECT_ROOT)
+        snapshot = build_prediction_snapshot(
+            teams,
+            fixtures,
+            predictor,
+            locked,
+            simulations=args.simulations,
+            seed=args.seed,
+            data_source=source,
+        )
+        path = write_snapshot(snapshot, args.output_dir)
+        leader, prob = next(iter(snapshot["champion_probs"].items()), ("n/a", 0.0))
+        print(f"snapshot={path}")
+        print(f"generated_at={snapshot['generated_at']} source={source}")
+        print(f"champion_leader={leader} ({prob:.1%}); remaining_matches={len(snapshot['remaining_matches'])}")
         return 0
     if args.command == "release-check":
         report = release_check(PROJECT_ROOT / "data" / "processed")

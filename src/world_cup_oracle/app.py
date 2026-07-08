@@ -7,15 +7,14 @@ from pathlib import Path
 import pandas as pd
 import plotly.express as px
 
-from world_cup_oracle.data import load_processed_or_demo
+from world_cup_oracle.context import load_live_context
 from world_cup_oracle.data.io import (
-    apply_team_adjustments,
     read_match_updates,
-    read_model_params,
     read_team_adjustments,
 )
 from world_cup_oracle.domain import Fixture, MatchPrediction, MatchStage, Team
-from world_cup_oracle.models import DEFAULT_AVERAGE_TOTAL_GOALS, MatchPredictor, apply_results_to_ratings
+from world_cup_oracle.models import MatchPredictor
+from world_cup_oracle.snapshots import load_snapshots
 from world_cup_oracle.simulation import project_bracket, run_monte_carlo
 
 
@@ -44,7 +43,16 @@ def main() -> None:
         st.header("World Cup 26 Oracle")
         page = st.radio(
             "View",
-            ["Dashboard", "Fixtures", "Bracket", "Match Predictor", "Tournament Simulator", "Model Check", "Data Update"],
+            [
+                "Dashboard",
+                "Fixtures",
+                "Bracket",
+                "Match Predictor",
+                "Tournament Simulator",
+                "Prediction History",
+                "Model Check",
+                "Data Update",
+            ],
             label_visibility="collapsed",
         )
         simulations = st.slider("Simulations", min_value=100, max_value=3000, value=750, step=100)
@@ -61,6 +69,8 @@ def main() -> None:
         _match_predictor(st, fixtures, predictor, team_names)
     elif page == "Tournament Simulator":
         _tournament_simulator(st, teams, fixtures, predictor, simulations, seed, team_names, locked_results)
+    elif page == "Prediction History":
+        _prediction_history(st, team_names)
     elif page == "Model Check":
         _model_check(st, teams, predictor)
     else:
@@ -301,6 +311,50 @@ def _tournament_simulator(
         )
 
 
+def _prediction_history(st, team_names: dict[str, str]) -> None:
+    st.title("Prediction History")
+    st.caption("An audit trail of how the model's champion odds have moved over time.")
+
+    snapshots = load_snapshots(ROOT / "data" / "snapshots")
+    if not snapshots:
+        st.info(
+            "No prediction snapshots yet. They are captured automatically as the "
+            "tournament progresses (`world-cup-oracle snapshot-predictions`)."
+        )
+        return
+
+    records = []
+    for snap in snapshots:
+        moment = snap.get("generated_at")
+        for code, prob in snap.get("champion_probs", {}).items():
+            records.append({"Time": moment, "Team": team_names.get(code, code), "Code": code, "Champion odds": prob})
+    history = pd.DataFrame(records)
+
+    latest = snapshots[-1]
+    leaders = sorted(latest.get("champion_probs", {}).items(), key=lambda kv: kv[1], reverse=True)[:6]
+    top_codes = [code for code, _ in leaders]
+
+    col1, col2 = st.columns(2)
+    col1.metric("Snapshots recorded", len(snapshots))
+    col2.metric("Latest", latest.get("generated_at", "n/a"))
+
+    chart_data = history[history["Code"].isin(top_codes)]
+    if len(snapshots) > 1:
+        st.subheader("Champion odds over time")
+        st.plotly_chart(
+            px.line(chart_data, x="Time", y="Champion odds", color="Team", markers=True),
+            use_container_width=True,
+        )
+    else:
+        st.caption("Only one snapshot so far — the trend chart appears once a second snapshot is recorded.")
+
+    st.subheader(f"Latest champion odds — {latest.get('generated_at', '')}")
+    latest_rows = pd.DataFrame(
+        [{"Team": team_names.get(c, c), "Champion odds": p} for c, p in leaders]
+    )
+    st.dataframe(latest_rows, use_container_width=True, hide_index=True)
+
+
 def _model_check(st, teams: list[Team], predictor: MatchPredictor) -> None:
     st.title("Model Check")
     rating_rows = pd.DataFrame(
@@ -365,19 +419,7 @@ def _simulate(
 
 
 def _load_tournament_context() -> tuple[list[Team], list[Fixture], MatchPredictor, dict, str]:
-    tournament_data = load_processed_or_demo(ROOT / "data" / "processed")
-    teams = tournament_data.teams
-    fixtures = tournament_data.fixtures
-    adjustments = read_team_adjustments(ROOT / "data" / "manual" / "team_adjustments.csv")
-    locked_results = read_match_updates(ROOT / "data" / "manual" / "match_updates.csv")
-    params = read_model_params(ROOT / "data" / "processed" / "model_params.json")
-    ratings = apply_team_adjustments(MatchPredictor.from_teams(teams).ratings, adjustments)
-    ratings = apply_results_to_ratings(ratings, fixtures, locked_results)
-    predictor = MatchPredictor(
-        ratings,
-        average_total_goals=params.get("average_total_goals", DEFAULT_AVERAGE_TOTAL_GOALS),
-    )
-    return teams, fixtures, predictor, locked_results, tournament_data.source
+    return load_live_context(ROOT)
 
 
 def _prediction_metrics(st, prediction: MatchPrediction, team_names: dict[str, str]) -> None:
