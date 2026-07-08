@@ -5,7 +5,7 @@ on:
     branches: [main]
   workflow_dispatch:
   schedule:
-    # Refresh official results every 6 hours while the tournament runs.
+    # Refresh official results and snapshot predictions every 6 hours.
     - cron: "0 */6 * * *"
 
 concurrency:
@@ -13,10 +13,17 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  sync:
+  # Build the site from a freshly-synced working tree and publish it. This job
+  # never commits, so branch protection on main can never block a deploy — the
+  # page is always current with live FIFA data baked into the artifact.
+  deploy:
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -28,41 +35,10 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -e .
-      - name: Sync official FIFA results
-        if: github.event_name != 'push'
+      - name: Refresh official results (working tree only)
         run: world-cup-oracle sync-fifa --apply
       - name: Release check
         run: world-cup-oracle release-check
-      - name: Commit refreshed data
-        if: github.event_name != 'push'
-        run: |
-          if git diff --quiet -- data; then
-            echo "No data changes."
-            exit 0
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add data
-          git commit -m "chore(data): scheduled official results sync"
-          git push origin main
-
-  deploy:
-    needs: sync
-    runs-on: ubuntu-latest
-    permissions:
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          # Re-resolve main so the site includes any data commit from the sync job.
-          ref: main
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
       - name: Build static site
         run: python scripts/build_site.py _site
       - uses: actions/upload-pages-artifact@v3
@@ -70,3 +46,41 @@ jobs:
           path: _site
       - id: deployment
         uses: actions/deploy-pages@v4
+
+  # Persist the audit trail: sync data, record a timestamped prediction
+  # snapshot, and open/refresh a single rolling PR to main (branch protection
+  # requires a PR, so we never push to main directly). Only runs on a schedule
+  # or manual dispatch, not on push, to avoid loops.
+  snapshot:
+    if: github.event_name != 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+      - name: Sync official results
+        run: world-cup-oracle sync-fifa --apply
+      - name: Snapshot predictions
+        run: world-cup-oracle snapshot-predictions
+      - name: Open or update data-refresh PR
+        uses: peter-evans/create-pull-request@v6
+        with:
+          add-paths: data
+          branch: automated/data-refresh
+          commit-message: "chore(data): scheduled results sync and prediction snapshot"
+          title: "chore(data): automated results + prediction snapshots"
+          body: |
+            Automated by the Deploy workflow: latest official FIFA results plus a
+            timestamped prediction snapshot appended to `data/snapshots/`
+            (the prediction audit trail). Safe to squash-merge.
+          labels: automated

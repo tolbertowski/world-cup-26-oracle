@@ -38,6 +38,7 @@ world-cup-oracle validate-snapshot --teams data/raw/teams.csv --fixtures data/ra
 world-cup-oracle import-snapshot --teams data/raw/teams.csv --fixtures data/raw/fixtures.csv
 world-cup-oracle simulate-demo --simulations 1000 --seed 26
 world-cup-oracle project-bracket
+world-cup-oracle snapshot-predictions
 world-cup-oracle cache-url "https://example.com/free-data.csv" --name source.csv
 make fit-ratings
 make player-callups
@@ -47,14 +48,17 @@ make player-callups
 
 The app deploys as a static site: [stlite](https://github.com/whitphx/stlite)
 runs Streamlit in the browser via WebAssembly, so GitHub Pages can host it with
-no server. `.github/workflows/deploy.yml` does two things:
+no server. `.github/workflows/deploy.yml` has two independent jobs:
 
-- **Scheduled data refresh** (every 6 hours, or manually via *Run workflow*):
-  runs `world-cup-oracle sync-fifa --apply` and commits any new official
-  results to `main`.
-- **Site build & deploy**: `scripts/build_site.py` assembles `_site/` (app,
-  package source, and data CSVs mounted into the browser filesystem) and
-  publishes it to Pages.
+- **`deploy`** (every push to `main`, plus the schedule): re-syncs official
+  results into the working tree, builds `_site/` with `scripts/build_site.py`
+  (app, package source, and data mounted into the browser filesystem), and
+  publishes to Pages. It never commits, so branch protection on `main` can
+  never block a deploy — the live page always reflects current FIFA data.
+- **`snapshot`** (every 6 hours, or manually via *Run workflow*): syncs results,
+  records a timestamped prediction snapshot, and opens/refreshes a single
+  rolling pull request (`automated/data-refresh`) so the refreshed data and the
+  audit trail land on `main` through review rather than a protected-branch push.
 
 One-time setup: repo Settings → Pages → Source: **GitHub Actions** (or
 `gh api repos/<owner>/<repo>/pages -X POST -f build_type=workflow`).
@@ -68,6 +72,15 @@ python3 scripts/serve_site.py 8765  # open http://127.0.0.1:8765
 
 The deployed app is read-only: predictions react to the data baked in at build
 time, and the scheduled sync keeps that data current through the final.
+
+### Prediction audit trail
+
+`world-cup-oracle snapshot-predictions` records a timestamped JSON in
+`data/snapshots/` — champion/finalist probabilities, the projected bracket, and
+win/draw/loss + expected goals for every currently-playable fixture. Files are
+immutable, so the git history of `data/snapshots/` is a reviewable record of
+what the model predicted at each point in time. The app's **Prediction History**
+page charts how champion odds have moved across snapshots.
 
 ## Data Workflow
 

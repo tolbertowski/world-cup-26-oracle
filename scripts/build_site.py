@@ -43,6 +43,10 @@ def collect_files() -> list[Path]:
             files.append(path)
         else:
             raise SystemExit(f"build_site: required input missing: {entry}")
+    # Prediction-history snapshots are optional (present once CI has run).
+    snapshot_dir = PROJECT_ROOT / "data" / "snapshots"
+    if snapshot_dir.is_dir():
+        files.extend(sorted(snapshot_dir.glob("*.json")))
     return files
 
 
