@@ -334,9 +334,17 @@ def _prediction_history(st, team_names: dict[str, str]) -> None:
     leaders = sorted(latest.get("champion_probs", {}).items(), key=lambda kv: kv[1], reverse=True)[:6]
     top_codes = [code for code, _ in leaders]
 
-    col1, col2 = st.columns(2)
+    backfilled = sum(1 for snap in snapshots if snap.get("backfilled"))
+    col1, col2, col3 = st.columns(3)
     col1.metric("Snapshots recorded", len(snapshots))
     col2.metric("Latest", latest.get("generated_at", "n/a"))
+    col3.metric("Backfilled", backfilled)
+    if backfilled:
+        st.caption(
+            "Backfilled snapshots are honest end-of-day reconstructions: the same "
+            "model and seed, restricted to the results and bracket knowledge "
+            "available at that date. Live snapshots are recorded as they happen."
+        )
 
     chart_data = history[history["Code"].isin(top_codes)]
     if len(snapshots) > 1:

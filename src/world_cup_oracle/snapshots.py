@@ -10,10 +10,11 @@ history of ``data/snapshots/`` is the audit trail.
 from __future__ import annotations
 
 import json
+from dataclasses import replace
 from datetime import datetime, timezone
 from pathlib import Path
 
-from world_cup_oracle.domain import Fixture, MatchResult, Team
+from world_cup_oracle.domain import Fixture, MatchResult, MatchStage, Team
 from world_cup_oracle.models import MatchPredictor
 from world_cup_oracle.simulation import project_bracket, run_monte_carlo
 
@@ -31,6 +32,7 @@ def build_prediction_snapshot(
     seed: int = 26,
     data_source: str = "processed",
     generated_at: datetime | None = None,
+    backfilled: bool = False,
 ) -> dict:
     """Assemble a deterministic prediction snapshot dict (seeded Monte Carlo)."""
     moment = (generated_at or datetime.now(timezone.utc)).astimezone(timezone.utc)
@@ -41,6 +43,7 @@ def build_prediction_snapshot(
 
     return {
         "generated_at": moment.strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "backfilled": backfilled,
         "data_source": data_source,
         "simulations": simulations,
         "seed": seed,
@@ -71,15 +74,29 @@ def build_prediction_snapshot(
     }
 
 
-def write_snapshot(snapshot: dict, snapshot_dir: Path) -> Path:
-    """Write a timestamped snapshot and refresh ``latest.json``; return its path."""
+def write_snapshot(snapshot: dict, snapshot_dir: Path, *, update_latest: bool = True) -> Path:
+    """Write a timestamped snapshot (and by default refresh ``latest.json``).
+
+    Backfilled snapshots pass ``update_latest=False`` so reconstructing history
+    never masks the genuinely newest prediction.
+    """
     snapshot_dir.mkdir(parents=True, exist_ok=True)
     stamp = snapshot["generated_at"].replace(":", "").replace("-", "")
     path = snapshot_dir / f"{SNAPSHOT_PREFIX}{stamp}.json"
     payload = json.dumps(snapshot, indent=2, sort_keys=True) + "\n"
     path.write_text(payload, encoding="utf-8")
-    (snapshot_dir / LATEST_NAME).write_text(payload, encoding="utf-8")
+    if update_latest:
+        (snapshot_dir / LATEST_NAME).write_text(payload, encoding="utf-8")
     return path
+
+
+def snapshot_dates(snapshot_dir: Path) -> set[str]:
+    """UTC dates (YYYY-MM-DD) that already have a snapshot."""
+    return {
+        snap["generated_at"][:10]
+        for snap in load_snapshots(snapshot_dir)
+        if snap.get("generated_at")
+    }
 
 
 def load_snapshots(snapshot_dir: Path) -> list[dict]:
@@ -94,6 +111,72 @@ def load_snapshots(snapshot_dir: Path) -> list[dict]:
             continue
     snapshots.sort(key=lambda snap: snap.get("generated_at", ""))
     return snapshots
+
+
+def results_as_of(
+    fixtures: list[Fixture],
+    results: dict[str, MatchResult],
+    cutoff: datetime,
+) -> dict[str, MatchResult]:
+    """Locked results whose fixture kicked off at or before ``cutoff``.
+
+    This is what makes honest backfill possible: every fixture carries its
+    official kickoff timestamp, so the set of results the model knew at the end
+    of any given day can be reconstructed exactly.
+    """
+    kickoff_by_id = {fixture.match_id: fixture.kickoff for fixture in fixtures}
+    cutoff = cutoff.astimezone(timezone.utc)
+    kept: dict[str, MatchResult] = {}
+    for match_id, result in results.items():
+        kickoff = _parse_kickoff(kickoff_by_id.get(match_id))
+        if kickoff is not None and kickoff <= cutoff:
+            kept[match_id] = result
+    return kept
+
+
+def fixtures_as_known(fixtures: list[Fixture], locked_ids: set[str]) -> list[Fixture]:
+    """Rewind knockout fixtures to what was known given ``locked_ids``.
+
+    The official calendar bakes real team codes (and host-advantage flags) into
+    knockout fixtures once pairings are decided. For a backfill date before that
+    decision, keeping them would leak the future — so a knockout fixture keeps
+    its teams only if every bracket source it references had been decided by
+    then; otherwise teams are blanked (and the venue treated as neutral) and the
+    bracket resolver re-derives pairings from the results locked at the time.
+    """
+    group_ids = {fixture.match_id for fixture in fixtures if fixture.stage == MatchStage.GROUP}
+    group_complete = group_ids <= locked_ids
+    rewound: list[Fixture] = []
+    for fixture in fixtures:
+        if fixture.stage == MatchStage.GROUP or _sources_decided(fixture, locked_ids, group_complete):
+            rewound.append(fixture)
+        else:
+            rewound.append(replace(fixture, home_team="", away_team="", neutral_site=True))
+    return rewound
+
+
+def _sources_decided(fixture: Fixture, locked_ids: set[str], group_complete: bool) -> bool:
+    for source in (fixture.home_source, fixture.away_source):
+        if not source:
+            continue
+        if source.startswith("W:") or source.startswith("RU:"):
+            if source.split(":", 1)[1] not in locked_ids:
+                return False
+        elif not group_complete:  # seed labels such as 1A / 3ABCDF
+            return False
+    return True
+
+
+def _parse_kickoff(value: str | None) -> datetime | None:
+    if not value:
+        return None
+    try:
+        moment = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if moment.tzinfo is None:
+        moment = moment.replace(tzinfo=timezone.utc)
+    return moment.astimezone(timezone.utc)
 
 
 def _remaining_match_predictions(

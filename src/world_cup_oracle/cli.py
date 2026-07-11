@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import argparse
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
-from world_cup_oracle.context import load_live_context
+from world_cup_oracle.context import build_predictor, load_live_context, load_raw_inputs
 from world_cup_oracle.data import build_demo_fixtures, build_demo_teams
 from world_cup_oracle.data.io import (
     GENERATED_PLAYER_ADJUSTMENT_PREFIX,
@@ -44,7 +44,13 @@ from world_cup_oracle.data.player_callups import (
 )
 from world_cup_oracle.models import MatchPredictor
 from world_cup_oracle.simulation import project_bracket, run_monte_carlo
-from world_cup_oracle.snapshots import build_prediction_snapshot, write_snapshot
+from world_cup_oracle.snapshots import (
+    build_prediction_snapshot,
+    fixtures_as_known,
+    results_as_of,
+    snapshot_dates,
+    write_snapshot,
+)
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -131,6 +137,26 @@ def build_parser() -> argparse.ArgumentParser:
     snapshot.add_argument("--simulations", type=int, default=5000)
     snapshot.add_argument("--seed", type=int, default=26)
     snapshot.add_argument("--output-dir", type=Path, default=PROJECT_ROOT / "data" / "snapshots")
+    snapshot.add_argument(
+        "--daily",
+        action="store_true",
+        help="Skip (successfully) when a snapshot already exists for today's UTC date.",
+    )
+
+    backfill = subparsers.add_parser(
+        "backfill-snapshots",
+        help="Reconstruct one end-of-day snapshot per missing day (marked backfilled).",
+    )
+    backfill.add_argument("--start", type=date.fromisoformat, default=WORLD_CUP_2026_START)
+    backfill.add_argument(
+        "--end",
+        type=date.fromisoformat,
+        default=None,
+        help="Last day to reconstruct (default: yesterday, UTC).",
+    )
+    backfill.add_argument("--simulations", type=int, default=5000)
+    backfill.add_argument("--seed", type=int, default=26)
+    backfill.add_argument("--output-dir", type=Path, default=PROJECT_ROOT / "data" / "snapshots")
 
     subparsers.add_parser("release-check", help="Fail if the app would still use demo data.")
     return parser
@@ -305,6 +331,9 @@ def main(argv: list[str] | None = None) -> int:
         print(f"champion={names.get(bracket.champion, bracket.champion)}")
         return 0
     if args.command == "snapshot-predictions":
+        if args.daily and datetime.now(timezone.utc).strftime("%Y-%m-%d") in snapshot_dates(args.output_dir):
+            print("daily snapshot already recorded for today; skipping")
+            return 0
         teams, fixtures, predictor, locked, source = load_live_context(PROJECT_ROOT)
         snapshot = build_prediction_snapshot(
             teams,
@@ -320,6 +349,42 @@ def main(argv: list[str] | None = None) -> int:
         print(f"snapshot={path}")
         print(f"generated_at={snapshot['generated_at']} source={source}")
         print(f"champion_leader={leader} ({prob:.1%}); remaining_matches={len(snapshot['remaining_matches'])}")
+        return 0
+    if args.command == "backfill-snapshots":
+        teams, fixtures, adjustments, locked, params, source = load_raw_inputs(PROJECT_ROOT)
+        existing = snapshot_dates(args.output_dir)
+        end = args.end or (datetime.now(timezone.utc).date() - timedelta(days=1))
+        day = args.start
+        written = 0
+        while day <= end:
+            if day.isoformat() in existing:
+                day += timedelta(days=1)
+                continue
+            # End-of-day reconstruction: only results whose fixture kicked off
+            # by 23:59 UTC that day, and only bracket knowledge derivable from
+            # them — knockout pairings not yet decided are re-blanked so the
+            # resolver rederives what was actually knowable at the time.
+            cutoff = datetime(day.year, day.month, day.day, 23, 59, 0, tzinfo=timezone.utc)
+            locked_then = results_as_of(fixtures, locked, cutoff)
+            fixtures_then = fixtures_as_known(fixtures, set(locked_then))
+            predictor = build_predictor(teams, fixtures_then, adjustments, locked_then, params)
+            snapshot = build_prediction_snapshot(
+                teams,
+                fixtures_then,
+                predictor,
+                locked_then,
+                simulations=args.simulations,
+                seed=args.seed,
+                data_source=source,
+                generated_at=cutoff,
+                backfilled=True,
+            )
+            write_snapshot(snapshot, args.output_dir, update_latest=False)
+            leader, prob = next(iter(snapshot["champion_probs"].items()), ("n/a", 0.0))
+            print(f"{day.isoformat()}: locked={len(locked_then)} leader={leader} ({prob:.1%})")
+            written += 1
+            day += timedelta(days=1)
+        print(f"backfilled={written}")
         return 0
     if args.command == "release-check":
         report = release_check(PROJECT_ROOT / "data" / "processed")

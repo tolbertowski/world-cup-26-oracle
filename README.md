@@ -82,6 +82,18 @@ immutable, so the git history of `data/snapshots/` is a reviewable record of
 what the model predicted at each point in time. The app's **Prediction History**
 page charts how champion odds have moved across snapshots.
 
+The scheduled workflow runs `snapshot-predictions --daily`, which guarantees
+exactly one snapshot per UTC day (later runs the same day are no-ops), and
+restores any not-yet-merged snapshots from the rolling data PR so nothing is
+lost between merges.
+
+`world-cup-oracle backfill-snapshots` reconstructs one end-of-day snapshot for
+each missing day since the tournament started. Reconstructions are honest: the
+same model and seed, restricted to the results whose fixtures had kicked off by
+that day, with knockout pairings re-blanked unless they were derivable from
+those results. Backfilled snapshots carry `"backfilled": true` so the audit
+trail always distinguishes recorded from reconstructed.
+
 ## Data Workflow
 
 The app ships with an illustrative offline demo tournament so it can run from a

@@ -145,6 +145,25 @@ so it represents the model's single most-likely path rather than an aggregate
 over thousands of runs. Locked results in `data/manual/match_updates.csv` are
 always honored over projections.
 
+## Prediction Audit Trail
+
+Every prediction snapshot in `data/snapshots/` is an immutable, timestamped
+record of the model's state: champion/finalist probabilities from a seeded
+Monte Carlo run, the deterministic projected bracket, and per-match
+probabilities for every fixture that was playable at that moment. One snapshot
+is recorded per UTC day by the scheduled workflow.
+
+Snapshots for days before recording began are reconstructed by
+`backfill-snapshots` and marked `"backfilled": true`. A reconstruction uses the
+same model, parameters, and seed, but restricts knowledge to that day: only
+results whose fixtures had kicked off by 23:59 UTC are locked, and knockout
+pairings are re-blanked unless every bracket source they reference had been
+decided — so a backfilled snapshot cannot peek at pairings, hosts, or results
+that were still in the future. Because ratings, adjustments, and fitted
+parameters were frozen before the tournament (the fit cutoff), the only
+time-varying input is the results themselves, which is what makes the
+reconstruction faithful.
+
 ## Cards and Corners
 
 Cards and corners are v1 projections, not claims of deep player-level modeling.
