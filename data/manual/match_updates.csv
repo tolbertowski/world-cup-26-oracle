@@ -87,5 +87,13 @@ match_id,stage,home_team,away_team,home_goals,away_goals,home_penalties,away_pen
 400021525,round_of_32,BEL,SEN,3,2,,,,,,,,,,official_fifa_sync
 400021526,round_of_32,POR,CRO,2,1,,,,,,,,,,official_fifa_sync
 400021527,round_of_32,SUI,ALG,2,0,,,,,,,,,,official_fifa_sync
+400021528,round_of_16,ARG,EGY,3,2,,,,,,,,,,official_fifa_sync
+400021529,round_of_16,POR,ESP,0,1,,,,,,,,,,official_fifa_sync
 400021530,round_of_16,CAN,MAR,0,3,,,,,,,,,,official_fifa_sync
+400021531,round_of_16,MEX,ENG,2,3,,,,,,,,,,official_fifa_sync
+400021532,round_of_16,BRA,NOR,1,2,,,,,,,,,,official_fifa_sync
 400021533,round_of_16,PAR,FRA,0,1,,,,,,,,,,official_fifa_sync
+400021534,round_of_16,USA,BEL,1,4,,,,,,,,,,official_fifa_sync
+400021535,round_of_16,SUI,COL,0,0,4,3,,,,,,,,official_fifa_sync
+400021536,quarter_final,FRA,MAR,2,0,,,,,,,,,,official_fifa_sync
+400021538,quarter_final,ESP,BEL,2,1,,,,,,,,,,official_fifa_sync
