@@ -1,4 +1,5 @@
 {
+  "backfilled": true,
   "bracket": {
     "champion": "ESP",
     "rounds": [
@@ -215,12 +216,12 @@
             "source": "locked"
           },
           {
-            "advance_prob": 1.0,
+            "advance_prob": 0.6421,
             "away": "BEL",
             "home": "ESP",
             "match_id": "400021538",
             "projected_winner": "ESP",
-            "source": "locked"
+            "source": "expected"
           },
           {
             "advance_prob": 0.633,
@@ -244,7 +245,7 @@
       {
         "matches": [
           {
-            "advance_prob": 0.5414,
+            "advance_prob": 0.5342,
             "away": "ESP",
             "home": "FRA",
             "match_id": "400021541",
@@ -265,7 +266,7 @@
       {
         "matches": [
           {
-            "advance_prob": 0.5394,
+            "advance_prob": 0.5323,
             "away": "ARG",
             "home": "ESP",
             "match_id": "400021543",
@@ -292,24 +293,37 @@
     "third_place": "FRA"
   },
   "champion_probs": {
-    "ARG": 0.196,
-    "ENG": 0.151,
-    "ESP": 0.3284,
-    "FRA": 0.2502,
-    "NOR": 0.0354,
-    "SUI": 0.039
+    "ARG": 0.2008,
+    "BEL": 0.059,
+    "ENG": 0.1548,
+    "ESP": 0.2178,
+    "FRA": 0.287,
+    "NOR": 0.0372,
+    "SUI": 0.0434
   },
   "data_source": "processed",
   "finalist_probs": {
-    "ARG": 0.4052,
-    "ENG": 0.3422,
-    "ESP": 0.5446,
-    "FRA": 0.4554,
-    "NOR": 0.1236,
-    "SUI": 0.129
+    "ARG": 0.4014,
+    "BEL": 0.1324,
+    "ENG": 0.3368,
+    "ESP": 0.3522,
+    "FRA": 0.5154,
+    "NOR": 0.1302,
+    "SUI": 0.1316
   },
-  "generated_at": "2026-07-11T07:52:12Z",
+  "generated_at": "2026-07-09T23:59:00Z",
   "remaining_matches": [
+    {
+      "away": "BEL",
+      "away_win": 0.3579,
+      "draw": 0.0,
+      "expected_away_goals": 1.2,
+      "expected_home_goals": 1.74,
+      "home": "ESP",
+      "home_win": 0.6421,
+      "match_id": "400021538",
+      "stage": "quarter_final"
+    },
     {
       "away": "ENG",
       "away_win": 0.633,
@@ -331,17 +345,6 @@
       "home_win": 0.6656,
       "match_id": "400021537",
       "stage": "quarter_final"
-    },
-    {
-      "away": "ESP",
-      "away_win": 0.5414,
-      "draw": 0.0,
-      "expected_away_goals": 1.55,
-      "expected_home_goals": 1.37,
-      "home": "FRA",
-      "home_win": 0.4586,
-      "match_id": "400021541",
-      "stage": "semi_final"
     }
   ],
   "seed": 26,

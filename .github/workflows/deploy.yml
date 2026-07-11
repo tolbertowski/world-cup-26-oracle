@@ -5,7 +5,8 @@ on:
     branches: [main]
   workflow_dispatch:
   schedule:
-    # Refresh official results and snapshot predictions every 6 hours.
+    # Redeploy with fresh official results every 6 hours; the 08:00 UTC run
+    # additionally records the daily prediction snapshot.
     - cron: "0 */6 * * *"
 
 concurrency:
@@ -68,10 +69,18 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -e .
+      # The rolling PR branch is force-rebuilt from main on every run, so any
+      # snapshots recorded since the PR was last merged live only on that
+      # branch. Restore them first or each run would clobber the previous
+      # run's unmerged snapshots and the audit trail would leak.
+      - name: Restore unmerged snapshots from the rolling PR branch
+        run: |
+          git fetch origin automated/data-refresh || exit 0
+          git checkout origin/automated/data-refresh -- data/snapshots || true
       - name: Sync official results
         run: world-cup-oracle sync-fifa --apply
-      - name: Snapshot predictions
-        run: world-cup-oracle snapshot-predictions
+      - name: Snapshot predictions (one per UTC day)
+        run: world-cup-oracle snapshot-predictions --daily
       - name: Open or update data-refresh PR
         uses: peter-evans/create-pull-request@v6
         with:

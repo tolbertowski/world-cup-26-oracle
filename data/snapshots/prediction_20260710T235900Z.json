@@ -1,4 +1,5 @@
 {
+  "backfilled": true,
   "bracket": {
     "champion": "ESP",
     "rounds": [
@@ -308,7 +309,7 @@
     "NOR": 0.1236,
     "SUI": 0.129
   },
-  "generated_at": "2026-07-11T07:52:12Z",
+  "generated_at": "2026-07-10T23:59:00Z",
   "remaining_matches": [
     {
       "away": "ENG",

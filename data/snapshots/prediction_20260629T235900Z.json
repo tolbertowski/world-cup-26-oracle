@@ -1,0 +1,506 @@
+{
+  "backfilled": true,
+  "bracket": {
+    "champion": "ESP",
+    "rounds": [
+      {
+        "matches": [
+          {
+            "advance_prob": 1.0,
+            "away": "CAN",
+            "home": "RSA",
+            "match_id": "400021518",
+            "projected_winner": "CAN",
+            "source": "locked"
+          },
+          {
+            "advance_prob": 1.0,
+            "away": "PAR",
+            "home": "GER",
+            "match_id": "400021513",
+            "projected_winner": "PAR",
+            "source": "locked"
+          },
+          {
+            "advance_prob": 0.508,
+            "away": "MAR",
+            "home": "NED",
+            "match_id": "400021522",
+            "projected_winner": "NED",
+            "source": "expected"
+          },
+          {
+            "advance_prob": 1.0,
+            "away": "JPN",
+            "home": "BRA",
+            "match_id": "400021516",
+            "projected_winner": "BRA",
+            "source": "locked"
+          },
+          {
+            "advance_prob": 0.752,
+            "away": "SWE",
+            "home": "FRA",
+            "match_id": "400021523",
+            "projected_winner": "FRA",
+            "source": "expected"
+          },
+          {
+            "advance_prob": 0.5202,
+            "away": "NOR",
+            "home": "CIV",
+            "match_id": "400021514",
+            "projected_winner": "NOR",
+            "source": "expected"
+          },
+          {
+            "advance_prob": 0.6241,
+            "away": "ECU",
+            "home": "MEX",
+            "match_id": "400021520",
+            "projected_winner": "MEX",
+            "source": "expected"
+          },
+          {
+            "advance_prob": 0.7211,
+            "away": "COD",
+            "home": "ENG",
+            "match_id": "400021512",
+            "projected_winner": "ENG",
+            "source": "expected"
+          },
+          {
+            "advance_prob": 0.7528,
+            "away": "BIH",
+            "home": "USA",
+            "match_id": "400021524",
+            "projected_winner": "USA",
+            "source": "expected"
+          },
+          {
+            "advance_prob": 0.5327,
+            "away": "SEN",
+            "home": "BEL",
+            "match_id": "400021525",
+            "projected_winner": "BEL",
+            "source": "expected"
+          },
+          {
+            "advance_prob": 0.5745,
+            "away": "CRO",
+            "home": "POR",
+            "match_id": "400021526",
+            "projected_winner": "POR",
+            "source": "expected"
+          },
+          {
+            "advance_prob": 0.7476,
+            "away": "AUT",
+            "home": "ESP",
+            "match_id": "400021519",
+            "projected_winner": "ESP",
+            "source": "expected"
+          },
+          {
+            "advance_prob": 0.5102,
+            "away": "ALG",
+            "home": "SUI",
+            "match_id": "400021527",
+            "projected_winner": "SUI",
+            "source": "expected"
+          },
+          {
+            "advance_prob": 0.813,
+            "away": "CPV",
+            "home": "ARG",
+            "match_id": "400021521",
+            "projected_winner": "ARG",
+            "source": "expected"
+          },
+          {
+            "advance_prob": 0.7206,
+            "away": "GHA",
+            "home": "COL",
+            "match_id": "400021517",
+            "projected_winner": "COL",
+            "source": "expected"
+          },
+          {
+            "advance_prob": 0.5478,
+            "away": "EGY",
+            "home": "AUS",
+            "match_id": "400021515",
+            "projected_winner": "AUS",
+            "source": "expected"
+          }
+        ],
+        "stage": "round_of_32"
+      },
+      {
+        "matches": [
+          {
+            "advance_prob": 0.7531,
+            "away": "FRA",
+            "home": "PAR",
+            "match_id": "400021533",
+            "projected_winner": "FRA",
+            "source": "expected"
+          },
+          {
+            "advance_prob": 0.6192,
+            "away": "NED",
+            "home": "CAN",
+            "match_id": "400021530",
+            "projected_winner": "NED",
+            "source": "expected"
+          },
+          {
+            "advance_prob": 0.6425,
+            "away": "NOR",
+            "home": "BRA",
+            "match_id": "400021532",
+            "projected_winner": "BRA",
+            "source": "expected"
+          },
+          {
+            "advance_prob": 0.5729,
+            "away": "ENG",
+            "home": "MEX",
+            "match_id": "400021531",
+            "projected_winner": "ENG",
+            "source": "expected"
+          },
+          {
+            "advance_prob": 0.6081,
+            "away": "ESP",
+            "home": "POR",
+            "match_id": "400021529",
+            "projected_winner": "ESP",
+            "source": "expected"
+          },
+          {
+            "advance_prob": 0.5547,
+            "away": "BEL",
+            "home": "USA",
+            "match_id": "400021534",
+            "projected_winner": "BEL",
+            "source": "expected"
+          },
+          {
+            "advance_prob": 0.6656,
+            "away": "AUS",
+            "home": "ARG",
+            "match_id": "400021528",
+            "projected_winner": "ARG",
+            "source": "expected"
+          },
+          {
+            "advance_prob": 0.5571,
+            "away": "COL",
+            "home": "SUI",
+            "match_id": "400021535",
+            "projected_winner": "COL",
+            "source": "expected"
+          }
+        ],
+        "stage": "round_of_16"
+      },
+      {
+        "matches": [
+          {
+            "advance_prob": 0.5717,
+            "away": "NED",
+            "home": "FRA",
+            "match_id": "400021536",
+            "projected_winner": "FRA",
+            "source": "expected"
+          },
+          {
+            "advance_prob": 0.6529,
+            "away": "BEL",
+            "home": "ESP",
+            "match_id": "400021538",
+            "projected_winner": "ESP",
+            "source": "expected"
+          },
+          {
+            "advance_prob": 0.5015,
+            "away": "ENG",
+            "home": "BRA",
+            "match_id": "400021539",
+            "projected_winner": "ENG",
+            "source": "expected"
+          },
+          {
+            "advance_prob": 0.6214,
+            "away": "COL",
+            "home": "ARG",
+            "match_id": "400021537",
+            "projected_winner": "ARG",
+            "source": "expected"
+          }
+        ],
+        "stage": "quarter_final"
+      },
+      {
+        "matches": [
+          {
+            "advance_prob": 0.541,
+            "away": "ESP",
+            "home": "FRA",
+            "match_id": "400021541",
+            "projected_winner": "ESP",
+            "source": "expected"
+          },
+          {
+            "advance_prob": 0.5528,
+            "away": "ARG",
+            "home": "ENG",
+            "match_id": "400021540",
+            "projected_winner": "ARG",
+            "source": "expected"
+          }
+        ],
+        "stage": "semi_final"
+      },
+      {
+        "matches": [
+          {
+            "advance_prob": 0.523,
+            "away": "ARG",
+            "home": "ESP",
+            "match_id": "400021543",
+            "projected_winner": "ESP",
+            "source": "expected"
+          }
+        ],
+        "stage": "final"
+      },
+      {
+        "matches": [
+          {
+            "advance_prob": 0.5353,
+            "away": "ENG",
+            "home": "FRA",
+            "match_id": "400021542",
+            "projected_winner": "FRA",
+            "source": "expected"
+          }
+        ],
+        "stage": "third_place"
+      }
+    ],
+    "third_place": "FRA"
+  },
+  "champion_probs": {
+    "ALG": 0.0162,
+    "ARG": 0.1332,
+    "AUS": 0.0202,
+    "AUT": 0.004,
+    "BEL": 0.0326,
+    "BIH": 0.0002,
+    "BRA": 0.1104,
+    "CAN": 0.0218,
+    "CIV": 0.0086,
+    "COD": 0.001,
+    "COL": 0.0428,
+    "CPV": 0.0012,
+    "CRO": 0.0152,
+    "ECU": 0.0082,
+    "EGY": 0.0072,
+    "ENG": 0.0732,
+    "ESP": 0.1368,
+    "FRA": 0.1252,
+    "GHA": 0.001,
+    "MAR": 0.04,
+    "MEX": 0.0328,
+    "NED": 0.0418,
+    "NOR": 0.0124,
+    "PAR": 0.0064,
+    "POR": 0.0464,
+    "SEN": 0.0188,
+    "SUI": 0.0148,
+    "SWE": 0.0026,
+    "USA": 0.025
+  },
+  "data_source": "processed",
+  "finalist_probs": {
+    "ALG": 0.0422,
+    "ARG": 0.2334,
+    "AUS": 0.0496,
+    "AUT": 0.0108,
+    "BEL": 0.068,
+    "BIH": 0.001,
+    "BRA": 0.2108,
+    "CAN": 0.0564,
+    "CIV": 0.0248,
+    "COD": 0.0072,
+    "COL": 0.0912,
+    "CPV": 0.0034,
+    "CRO": 0.0364,
+    "ECU": 0.0238,
+    "EGY": 0.025,
+    "ENG": 0.1384,
+    "ESP": 0.22,
+    "FRA": 0.211,
+    "GHA": 0.0048,
+    "MAR": 0.0818,
+    "MEX": 0.069,
+    "NED": 0.0812,
+    "NOR": 0.033,
+    "PAR": 0.0278,
+    "POR": 0.0892,
+    "SEN": 0.0492,
+    "SUI": 0.0434,
+    "SWE": 0.0124,
+    "USA": 0.0548
+  },
+  "generated_at": "2026-06-29T23:59:00Z",
+  "remaining_matches": [
+    {
+      "away": "MAR",
+      "away_win": 0.492,
+      "draw": 0.0,
+      "expected_away_goals": 1.42,
+      "expected_home_goals": 1.44,
+      "home": "NED",
+      "home_win": 0.508,
+      "match_id": "400021522",
+      "stage": "round_of_32"
+    },
+    {
+      "away": "SWE",
+      "away_win": 0.248,
+      "draw": 0.0,
+      "expected_away_goals": 0.97,
+      "expected_home_goals": 1.98,
+      "home": "FRA",
+      "home_win": 0.752,
+      "match_id": "400021523",
+      "stage": "round_of_32"
+    },
+    {
+      "away": "NOR",
+      "away_win": 0.5202,
+      "draw": 0.0,
+      "expected_away_goals": 1.44,
+      "expected_home_goals": 1.37,
+      "home": "CIV",
+      "home_win": 0.4798,
+      "match_id": "400021514",
+      "stage": "round_of_32"
+    },
+    {
+      "away": "ECU",
+      "away_win": 0.3759,
+      "draw": 0.0,
+      "expected_away_goals": 1.12,
+      "expected_home_goals": 1.57,
+      "home": "MEX",
+      "home_win": 0.6241,
+      "match_id": "400021520",
+      "stage": "round_of_32"
+    },
+    {
+      "away": "COD",
+      "away_win": 0.2789,
+      "draw": 0.0,
+      "expected_away_goals": 0.97,
+      "expected_home_goals": 1.83,
+      "home": "ENG",
+      "home_win": 0.7211,
+      "match_id": "400021512",
+      "stage": "round_of_32"
+    },
+    {
+      "away": "BIH",
+      "away_win": 0.2472,
+      "draw": 0.0,
+      "expected_away_goals": 0.93,
+      "expected_home_goals": 1.96,
+      "home": "USA",
+      "home_win": 0.7528,
+      "match_id": "400021524",
+      "stage": "round_of_32"
+    },
+    {
+      "away": "SEN",
+      "away_win": 0.4673,
+      "draw": 0.0,
+      "expected_away_goals": 1.35,
+      "expected_home_goals": 1.47,
+      "home": "BEL",
+      "home_win": 0.5327,
+      "match_id": "400021525",
+      "stage": "round_of_32"
+    },
+    {
+      "away": "CRO",
+      "away_win": 0.4255,
+      "draw": 0.0,
+      "expected_away_goals": 1.28,
+      "expected_home_goals": 1.57,
+      "home": "POR",
+      "home_win": 0.5745,
+      "match_id": "400021526",
+      "stage": "round_of_32"
+    },
+    {
+      "away": "AUT",
+      "away_win": 0.2524,
+      "draw": 0.0,
+      "expected_away_goals": 0.97,
+      "expected_home_goals": 1.97,
+      "home": "ESP",
+      "home_win": 0.7476,
+      "match_id": "400021519",
+      "stage": "round_of_32"
+    },
+    {
+      "away": "ALG",
+      "away_win": 0.4898,
+      "draw": 0.0,
+      "expected_away_goals": 1.43,
+      "expected_home_goals": 1.44,
+      "home": "SUI",
+      "home_win": 0.5102,
+      "match_id": "400021527",
+      "stage": "round_of_32"
+    },
+    {
+      "away": "CPV",
+      "away_win": 0.187,
+      "draw": 0.0,
+      "expected_away_goals": 0.82,
+      "expected_home_goals": 2.1,
+      "home": "ARG",
+      "home_win": 0.813,
+      "match_id": "400021521",
+      "stage": "round_of_32"
+    },
+    {
+      "away": "GHA",
+      "away_win": 0.2794,
+      "draw": 0.0,
+      "expected_away_goals": 1.01,
+      "expected_home_goals": 1.85,
+      "home": "COL",
+      "home_win": 0.7206,
+      "match_id": "400021517",
+      "stage": "round_of_32"
+    },
+    {
+      "away": "EGY",
+      "away_win": 0.4522,
+      "draw": 0.0,
+      "expected_away_goals": 1.28,
+      "expected_home_goals": 1.47,
+      "home": "AUS",
+      "home_win": 0.5478,
+      "match_id": "400021515",
+      "stage": "round_of_32"
+    }
+  ],
+  "seed": 26,
+  "simulations": 5000
+}

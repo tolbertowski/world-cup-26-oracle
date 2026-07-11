@@ -90,16 +90,16 @@ match_id,stage,home_team,away_team,group,kickoff,venue,neutral_site,home_source,
 400021533,round_of_16,PAR,FRA,,2026-07-04T21:00:00Z,Philadelphia Stadium (Philadelphia),true,W:400021513,W:400021523
 400021530,round_of_16,CAN,MAR,,2026-07-04T17:00:00Z,Houston Stadium (Houston),true,W:400021518,W:400021522
 400021532,round_of_16,BRA,NOR,,2026-07-05T20:00:00Z,New York/New Jersey Stadium (New Jersey),true,W:400021516,W:400021514
-400021531,round_of_16,MEX,ENG,,2026-07-06T00:00:00Z,Mexico City Stadium (Mexico City),false,W:400021520,W:400021512
+400021531,round_of_16,MEX,ENG,,2026-07-06T01:00:00Z,Mexico City Stadium (Mexico City),false,W:400021520,W:400021512
 400021529,round_of_16,POR,ESP,,2026-07-06T19:00:00Z,Dallas Stadium (Dallas),true,W:400021526,W:400021519
 400021534,round_of_16,USA,BEL,,2026-07-07T00:00:00Z,Seattle Stadium (Seattle),false,W:400021524,W:400021525
 400021528,round_of_16,ARG,EGY,,2026-07-07T16:00:00Z,Atlanta Stadium (Atlanta),true,W:400021521,W:400021515
 400021535,round_of_16,SUI,COL,,2026-07-07T20:00:00Z,BC Place Vancouver (Vancouver),true,W:400021527,W:400021517
 400021536,quarter_final,FRA,MAR,,2026-07-09T20:00:00Z,Boston Stadium (Boston),true,W:400021533,W:400021530
-400021538,quarter_final,,,,2026-07-10T19:00:00Z,Los Angeles Stadium (Los Angeles),true,W:400021529,W:400021534
-400021539,quarter_final,,,,2026-07-11T21:00:00Z,Miami Stadium (Miami),true,W:400021532,W:400021531
-400021537,quarter_final,,,,2026-07-12T01:00:00Z,Kansas City Stadium (Kansas City),true,W:400021528,W:400021535
-400021541,semi_final,,,,2026-07-14T19:00:00Z,Dallas Stadium (Dallas),true,W:400021536,W:400021538
+400021538,quarter_final,ESP,BEL,,2026-07-10T19:00:00Z,Los Angeles Stadium (Los Angeles),true,W:400021529,W:400021534
+400021539,quarter_final,NOR,ENG,,2026-07-11T21:00:00Z,Miami Stadium (Miami),true,W:400021532,W:400021531
+400021537,quarter_final,ARG,SUI,,2026-07-12T01:00:00Z,Kansas City Stadium (Kansas City),true,W:400021528,W:400021535
+400021541,semi_final,FRA,ESP,,2026-07-14T19:00:00Z,Dallas Stadium (Dallas),true,W:400021536,W:400021538
 400021540,semi_final,,,,2026-07-15T19:00:00Z,Atlanta Stadium (Atlanta),true,W:400021539,W:400021537
 400021542,third_place,,,,2026-07-18T21:00:00Z,Miami Stadium (Miami),true,RU:400021541,RU:400021540
 400021543,final,,,,2026-07-19T19:00:00Z,New York/New Jersey Stadium (New Jersey),true,W:400021541,W:400021540
