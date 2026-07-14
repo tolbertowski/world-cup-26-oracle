@@ -96,4 +96,6 @@ match_id,stage,home_team,away_team,home_goals,away_goals,home_penalties,away_pen
 400021534,round_of_16,USA,BEL,1,4,,,,,,,,,,official_fifa_sync
 400021535,round_of_16,SUI,COL,0,0,4,3,,,,,,,,official_fifa_sync
 400021536,quarter_final,FRA,MAR,2,0,,,,,,,,,,official_fifa_sync
+400021537,quarter_final,ARG,SUI,3,1,,,,,,,,,,official_fifa_sync
 400021538,quarter_final,ESP,BEL,2,1,,,,,,,,,,official_fifa_sync
+400021539,quarter_final,NOR,ENG,1,2,,,,,,,,,,official_fifa_sync

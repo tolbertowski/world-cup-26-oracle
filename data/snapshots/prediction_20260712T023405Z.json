@@ -232,12 +232,12 @@
             "source": "locked"
           },
           {
-            "advance_prob": 1.0,
+            "advance_prob": 0.6656,
             "away": "SUI",
             "home": "ARG",
             "match_id": "400021537",
             "projected_winner": "ARG",
-            "source": "locked"
+            "source": "expected"
           }
         ],
         "stage": "quarter_final"
@@ -253,7 +253,7 @@
             "source": "expected"
           },
           {
-            "advance_prob": 0.5446,
+            "advance_prob": 0.536,
             "away": "ARG",
             "home": "ENG",
             "match_id": "400021540",
@@ -266,7 +266,7 @@
       {
         "matches": [
           {
-            "advance_prob": 0.5307,
+            "advance_prob": 0.5394,
             "away": "ARG",
             "home": "ESP",
             "match_id": "400021543",
@@ -293,20 +293,33 @@
     "third_place": "FRA"
   },
   "champion_probs": {
-    "ARG": 0.2606,
-    "ENG": 0.1988,
-    "ESP": 0.3114,
-    "FRA": 0.2292
+    "ARG": 0.173,
+    "ENG": 0.2348,
+    "ESP": 0.3134,
+    "FRA": 0.2484,
+    "SUI": 0.0304
   },
   "data_source": "processed",
   "finalist_probs": {
-    "ARG": 0.5508,
-    "ENG": 0.4492,
-    "ESP": 0.5502,
-    "FRA": 0.4498
+    "ARG": 0.3602,
+    "ENG": 0.5358,
+    "ESP": 0.5392,
+    "FRA": 0.4608,
+    "SUI": 0.104
   },
-  "generated_at": "2026-07-14T02:20:47Z",
+  "generated_at": "2026-07-12T02:34:05Z",
   "remaining_matches": [
+    {
+      "away": "SUI",
+      "away_win": 0.3344,
+      "draw": 0.0,
+      "expected_away_goals": 1.11,
+      "expected_home_goals": 1.74,
+      "home": "ARG",
+      "home_win": 0.6656,
+      "match_id": "400021537",
+      "stage": "quarter_final"
+    },
     {
       "away": "ESP",
       "away_win": 0.5414,
@@ -316,17 +329,6 @@
       "home": "FRA",
       "home_win": 0.4586,
       "match_id": "400021541",
-      "stage": "semi_final"
-    },
-    {
-      "away": "ARG",
-      "away_win": 0.5446,
-      "draw": 0.0,
-      "expected_away_goals": 1.47,
-      "expected_home_goals": 1.34,
-      "home": "ENG",
-      "home_win": 0.4554,
-      "match_id": "400021540",
       "stage": "semi_final"
     }
   ],
