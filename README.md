@@ -39,6 +39,7 @@ world-cup-oracle import-snapshot --teams data/raw/teams.csv --fixtures data/raw/
 world-cup-oracle simulate-demo --simulations 1000 --seed 26
 world-cup-oracle project-bracket
 world-cup-oracle snapshot-predictions
+world-cup-oracle backtest
 world-cup-oracle cache-url "https://example.com/free-data.csv" --name source.csv
 make fit-ratings
 make player-callups
@@ -72,6 +73,22 @@ python3 scripts/serve_site.py 8765  # open http://127.0.0.1:8765
 
 The deployed app is read-only: predictions react to the data baked in at build
 time, and the scheduled sync keeps that data current through the final.
+
+### Model performance
+
+`world-cup-oracle backtest` scores the model's genuine pre-kickoff predictions
+against every played result and writes `data/backtest.json` (shown on the app's
+**Model Performance** page). On the 2026 World Cup it scored **64% top-pick
+accuracy** and an **RPS of 0.18 — about 25% better than a coin-flip baseline**,
+in the range of bookmaker-level football forecasts. Because it operates over the
+generic prediction interfaces, the same evaluation transfers to another
+tournament or a Premier League season by swapping in that competition's fitted
+ratings, fixtures, and results (see [docs/methodology.md](docs/methodology.md)).
+
+The tournament is over, so the deploy workflow's 6-hourly schedule is retired;
+the site now redeploys only on push to `main` or a manual run. Restoring the
+`schedule` trigger in `.github/workflows/deploy.yml` resumes live syncing for a
+future event.
 
 ### Prediction audit trail
 

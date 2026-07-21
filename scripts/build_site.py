@@ -30,6 +30,7 @@ INCLUDE = [
     "data/manual/match_updates.csv",
     "data/manual/team_adjustments.csv",
     "data/manual/player_callups.csv",
+    "data/backtest.json",
 ]
 
 

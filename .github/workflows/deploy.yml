@@ -4,10 +4,9 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
-  schedule:
-    # Redeploy with fresh official results every 6 hours; the 08:00 UTC run
-    # additionally records the daily prediction snapshot.
-    - cron: "0 */6 * * *"
+  # The 2026 tournament is over, so the 6-hourly schedule is retired — the site
+  # now redeploys only on a push to main or a manual run. Restore the `schedule`
+  # trigger to resume automatic results sync + daily snapshots for a live event.
 
 concurrency:
   group: pages

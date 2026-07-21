@@ -164,6 +164,41 @@ parameters were frozen before the tournament (the fit cutoff), the only
 time-varying input is the results themselves, which is what makes the
 reconstruction faithful.
 
+## Backtest Evaluation
+
+`world-cup-oracle backtest` scores the model against every played result the
+honest way: for each match it rebuilds the predictor from **only the results
+known before that match kicked off** (a strict kickoff-time cutoff that excludes
+the match itself and any simultaneous games), predicts it, and scores the
+genuine pre-match forecast. Ratings, adjustments, and fitted parameters were
+frozen before the tournament, so this is a true out-of-sample test.
+
+Forecasts are scored over the ordered home/draw/away outcome with:
+
+- **Ranked Probability Score (RPS)** — the standard ordinal football metric
+  (lower is better; rewards being close in outcome order);
+- **multiclass Brier score** and **log loss**;
+- **top-pick accuracy**;
+- **calibration** (confidence vs realized hit rate per bin);
+- **skill vs a uniform 1/3-1/3-1/3 baseline** — the fraction of the baseline's
+  error the model removes.
+
+Knockout ties are scored on who advanced (a shootout win is a home/away result,
+not a draw), matching how the model folds draws into an eventual winner. The
+report is written to `data/backtest.json` and shown on the app's **Model
+Performance** page.
+
+### Reusing this architecture for another competition
+
+Nothing in the backtest, the metrics, or the match model is World-Cup specific —
+they operate over the `Team` / `Fixture` / `MatchResult` / `MatchPrediction`
+interfaces. To evaluate (or run) the same architecture on a future international
+tournament, the Euros, or a **Premier League** season: fit ratings from that
+competition's history with `fit-ratings`, supply its fixtures and results in the
+standard processed schema (each fixture with a kickoff timestamp), and run
+`backtest`. The Elo + Dixon-Coles + in-tournament-update pipeline and every
+metric carry over unchanged; only the data source differs.
+
 ## Cards and Corners
 
 Cards and corners are v1 projections, not claims of deep player-level modeling.

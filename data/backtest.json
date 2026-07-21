@@ -1,0 +1,105 @@
+{
+  "baseline_uniform": {
+    "accuracy": 0.4904,
+    "brier_score": 0.6667,
+    "log_loss": 1.0986,
+    "matches": 104,
+    "rps": 0.2457
+  },
+  "by_stage": {
+    "final": {
+      "accuracy": 1.0,
+      "brier_score": 0.4279,
+      "log_loss": 0.6209,
+      "matches": 1,
+      "rps": 0.2139
+    },
+    "group": {
+      "accuracy": 0.5694,
+      "brier_score": 0.568,
+      "log_loss": 0.9559,
+      "matches": 72,
+      "rps": 0.1834
+    },
+    "quarter_final": {
+      "accuracy": 1.0,
+      "brier_score": 0.2779,
+      "log_loss": 0.4654,
+      "matches": 4,
+      "rps": 0.1389
+    },
+    "round_of_16": {
+      "accuracy": 0.75,
+      "brier_score": 0.4041,
+      "log_loss": 0.5911,
+      "matches": 8,
+      "rps": 0.2021
+    },
+    "round_of_32": {
+      "accuracy": 0.8125,
+      "brier_score": 0.3491,
+      "log_loss": 0.5314,
+      "matches": 16,
+      "rps": 0.1746
+    },
+    "semi_final": {
+      "accuracy": 1.0,
+      "brier_score": 0.4177,
+      "log_loss": 0.6107,
+      "matches": 2,
+      "rps": 0.2089
+    },
+    "third_place": {
+      "accuracy": 0.0,
+      "brier_score": 0.5568,
+      "log_loss": 0.75,
+      "matches": 1,
+      "rps": 0.2784
+    }
+  },
+  "calibration": [
+    {
+      "accuracy": 0.0,
+      "bin": 1,
+      "confidence": 0.0,
+      "count": 0
+    },
+    {
+      "accuracy": 0.3076923076923077,
+      "bin": 2,
+      "confidence": 0.3796531989407507,
+      "count": 13
+    },
+    {
+      "accuracy": 0.6521739130434783,
+      "bin": 3,
+      "confidence": 0.5027521789166672,
+      "count": 69
+    },
+    {
+      "accuracy": 0.8095238095238095,
+      "bin": 4,
+      "confidence": 0.6709226057891564,
+      "count": 21
+    },
+    {
+      "accuracy": 1.0,
+      "bin": 5,
+      "confidence": 0.8130259395590529,
+      "count": 1
+    }
+  ],
+  "data_source": "processed",
+  "overall": {
+    "accuracy": 0.6442,
+    "brier_score": 0.5062,
+    "log_loss": 0.8318,
+    "matches": 104,
+    "rps": 0.1835
+  },
+  "skill_vs_uniform": {
+    "brier": 0.2407,
+    "log_loss": 0.2429,
+    "rps": 0.2534
+  }
+}

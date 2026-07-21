@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pandas as pd
@@ -50,6 +51,7 @@ def main() -> None:
                 "Match Predictor",
                 "Tournament Simulator",
                 "Prediction History",
+                "Model Performance",
                 "Model Check",
                 "Data Update",
             ],
@@ -71,6 +73,8 @@ def main() -> None:
         _tournament_simulator(st, teams, fixtures, predictor, simulations, seed, team_names, locked_results)
     elif page == "Prediction History":
         _prediction_history(st, team_names)
+    elif page == "Model Performance":
+        _model_performance(st)
     elif page == "Model Check":
         _model_check(st, teams, predictor)
     else:
@@ -361,6 +365,60 @@ def _prediction_history(st, team_names: dict[str, str]) -> None:
         [{"Team": team_names.get(c, c), "Champion odds": p} for c, p in leaders]
     )
     st.dataframe(latest_rows, use_container_width=True, hide_index=True)
+
+
+def _model_performance(st) -> None:
+    st.title("Model Performance")
+    st.caption(
+        "How the model scored against real results, using only what was known "
+        "before each match kicked off. The same evaluation transfers to any "
+        "tournament or league."
+    )
+
+    report_path = ROOT / "data" / "backtest.json"
+    if not report_path.exists():
+        st.info("No backtest report yet. Run `world-cup-oracle backtest`.")
+        return
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    overall = report["overall"]
+    skill = report["skill_vs_uniform"]
+
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric("Matches scored", overall["matches"])
+    col2.metric("Top-pick accuracy", f"{overall['accuracy']:.1%}")
+    col3.metric("Ranked Probability Score", f"{overall['rps']:.3f}", help="Lower is better; 0 is perfect.")
+    col4.metric("Skill vs coin-flip", f"{skill['rps']:.1%}", help="Share of a uniform baseline's error removed.")
+
+    st.caption(
+        f"Baseline (uniform 1/3-1/3-1/3) RPS {report['baseline_uniform']['rps']:.3f} vs "
+        f"model {overall['rps']:.3f}. Brier {overall['brier_score']:.3f}, log loss {overall['log_loss']:.3f}."
+    )
+
+    st.subheader("By stage")
+    st.dataframe(
+        pd.DataFrame(
+            [
+                {"Stage": stage.replace("_", " ").title(), "Matches": m["matches"],
+                 "Accuracy": m["accuracy"], "RPS": m["rps"]}
+                for stage, m in report["by_stage"].items()
+            ]
+        ),
+        use_container_width=True,
+        hide_index=True,
+    )
+
+    st.subheader("Calibration")
+    st.caption("Confidence vs actual hit rate per bin — points near the diagonal are well-calibrated.")
+    calibration = pd.DataFrame(report["calibration"])
+    calibration = calibration[calibration["count"] > 0]
+    if not calibration.empty:
+        st.plotly_chart(
+            px.scatter(
+                calibration, x="confidence", y="accuracy", size="count",
+                range_x=[0, 1], range_y=[0, 1],
+            ),
+            use_container_width=True,
+        )
 
 
 def _model_check(st, teams: list[Team], predictor: MatchPredictor) -> None:

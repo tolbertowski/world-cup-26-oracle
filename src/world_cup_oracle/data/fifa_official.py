@@ -322,10 +322,17 @@ def _stage_from_match(match: dict) -> MatchStage:
         "Round of 16": MatchStage.ROUND_OF_16,
         "Quarter-final": MatchStage.QUARTER_FINAL,
         "Semi-final": MatchStage.SEMI_FINAL,
+        # FIFA has labelled the third-place game both "Play-off for third place"
+        # and "Bronze final" across the tournament; accept either.
         "Play-off for third place": MatchStage.THIRD_PLACE,
+        "Bronze final": MatchStage.THIRD_PLACE,
         "Final": MatchStage.FINAL,
     }
-    return mapping.get(stage, MatchStage.GROUP)
+    if stage in mapping:
+        return mapping[stage]
+    # Only the group stage carries a group; an unknown non-group label defaulting
+    # to GROUP would fail validation, so treat unrecognised labels as knockout.
+    return MatchStage.GROUP if _group_from_match(match) else MatchStage.FINAL
 
 
 def _group_from_match(match: dict) -> str | None:
