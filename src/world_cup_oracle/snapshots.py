@@ -117,19 +117,26 @@ def results_as_of(
     fixtures: list[Fixture],
     results: dict[str, MatchResult],
     cutoff: datetime,
+    *,
+    inclusive: bool = True,
 ) -> dict[str, MatchResult]:
-    """Locked results whose fixture kicked off at or before ``cutoff``.
+    """Locked results whose fixture kicked off before ``cutoff``.
 
-    This is what makes honest backfill possible: every fixture carries its
-    official kickoff timestamp, so the set of results the model knew at the end
-    of any given day can be reconstructed exactly.
+    This is what makes honest reconstruction possible: every fixture carries its
+    official kickoff timestamp, so the set of results known at any moment can be
+    rebuilt exactly. ``inclusive`` keeps kickoffs at the cutoff (end-of-day
+    snapshots); a strict cutoff (``inclusive=False``) is used to score a match
+    on only what was known *before* it kicked off, excluding itself and
+    simultaneous games.
     """
     kickoff_by_id = {fixture.match_id: fixture.kickoff for fixture in fixtures}
     cutoff = cutoff.astimezone(timezone.utc)
     kept: dict[str, MatchResult] = {}
     for match_id, result in results.items():
         kickoff = _parse_kickoff(kickoff_by_id.get(match_id))
-        if kickoff is not None and kickoff <= cutoff:
+        if kickoff is None:
+            continue
+        if (kickoff <= cutoff) if inclusive else (kickoff < cutoff):
             kept[match_id] = result
     return kept
 

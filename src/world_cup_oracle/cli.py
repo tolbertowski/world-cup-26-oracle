@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import argparse
+import json
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
+from world_cup_oracle.backtest import run_backtest
 from world_cup_oracle.context import build_predictor, load_live_context, load_raw_inputs
 from world_cup_oracle.data import build_demo_fixtures, build_demo_teams
 from world_cup_oracle.data.io import (
@@ -157,6 +159,13 @@ def build_parser() -> argparse.ArgumentParser:
     backfill.add_argument("--simulations", type=int, default=5000)
     backfill.add_argument("--seed", type=int, default=26)
     backfill.add_argument("--output-dir", type=Path, default=PROJECT_ROOT / "data" / "snapshots")
+
+    backtest = subparsers.add_parser(
+        "backtest",
+        help="Score genuine pre-kickoff predictions against played results.",
+    )
+    backtest.add_argument("--output", type=Path, default=PROJECT_ROOT / "data" / "backtest.json")
+    backtest.add_argument("--dry-run", action="store_true", help="Print metrics without writing the report.")
 
     subparsers.add_parser("release-check", help="Fail if the app would still use demo data.")
     return parser
@@ -385,6 +394,21 @@ def main(argv: list[str] | None = None) -> int:
             written += 1
             day += timedelta(days=1)
         print(f"backfilled={written}")
+        return 0
+    if args.command == "backtest":
+        report = run_backtest(PROJECT_ROOT)
+        overall = report["overall"]
+        skill = report["skill_vs_uniform"]
+        if not args.dry_run:
+            args.output.parent.mkdir(parents=True, exist_ok=True)
+            args.output.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        print(f"matches={overall['matches']} accuracy={overall['accuracy']:.1%}")
+        print(f"rps={overall['rps']:.4f} brier={overall['brier_score']:.4f} log_loss={overall['log_loss']:.4f}")
+        print(f"uniform_rps={report['baseline_uniform']['rps']:.4f} rps_skill={skill['rps']:.1%}")
+        for stage, metrics in report["by_stage"].items():
+            print(f"  {stage}: n={metrics['matches']} acc={metrics['accuracy']:.0%} rps={metrics['rps']:.3f}")
+        if not args.dry_run:
+            print(f"report={args.output}")
         return 0
     if args.command == "release-check":
         report = release_check(PROJECT_ROOT / "data" / "processed")
