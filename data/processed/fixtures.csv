@@ -100,6 +100,6 @@ match_id,stage,home_team,away_team,group,kickoff,venue,neutral_site,home_source,
 400021539,quarter_final,NOR,ENG,,2026-07-11T21:00:00Z,Miami Stadium (Miami),true,W:400021532,W:400021531
 400021537,quarter_final,ARG,SUI,,2026-07-12T01:00:00Z,Kansas City Stadium (Kansas City),true,W:400021528,W:400021535
 400021541,semi_final,FRA,ESP,,2026-07-14T19:00:00Z,Dallas Stadium (Dallas),true,W:400021536,W:400021538
-400021540,semi_final,,,,2026-07-15T19:00:00Z,Atlanta Stadium (Atlanta),true,W:400021539,W:400021537
-400021542,third_place,,,,2026-07-18T21:00:00Z,Miami Stadium (Miami),true,RU:400021541,RU:400021540
-400021543,final,,,,2026-07-19T19:00:00Z,New York/New Jersey Stadium (New Jersey),true,W:400021541,W:400021540
+400021540,semi_final,ENG,ARG,,2026-07-15T19:00:00Z,Atlanta Stadium (Atlanta),true,W:400021539,W:400021537
+400021542,third_place,FRA,ENG,,2026-07-18T21:00:00Z,Miami Stadium (Miami),true,RU:400021541,RU:400021540
+400021543,final,ESP,ARG,,2026-07-19T19:00:00Z,New York/New Jersey Stadium (New Jersey),true,W:400021541,W:400021540
